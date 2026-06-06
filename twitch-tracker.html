@@ -1504,7 +1504,30 @@ function connectStreamerChat(s){
       else if(msgType==='giftpaidupgrade'){subText=`⬆️ <b>${userLink}</b> hat ein geschenktes Sub fortgesetzt!`;}
       else if(msgType==='primepaidupgrade'){subText=`👑 <b>${userLink}</b> hat von Prime auf bezahlt gewechselt!`;}
       else if(msgType==='raid'){const raiders=tags['msg-param-viewerCount']||'?';subText=`⚔️ <b>${userLink}</b> raidet mit ${raiders} Zuschauern!`;}
-      if(subText)addSpecialNotice(s,subText,'sub-msg',eventData||null);
+      else if(msgType==='viewermilestone'||msgType==='viewer-milestone'){
+        const streak=tags['msg-param-value']||tags['msg-param-streak-months']||'?';
+        subText=`👁️ <b>${userLink}</b> Zuschauer-Serie: <b style="color:#00bcd4">${streak} Streams</b>!`;
+      }
+      else if(msgType==='bitsbadgetier'){
+        const threshold=tags['msg-param-threshold']||'?';
+        subText=`🏅 <b>${userLink}</b> hat das <b style="color:#f0a500">${num(parseInt(threshold))} Bits</b> Abzeichen erhalten!`;
+      }
+      else if(msgType==='announcement'){
+        const annColor=tags['msg-param-color']||'PRIMARY';
+        const annText=tags['system-msg']||'';
+        subText=`📢 <b style="color:#9146FF">Ankündigung:</b> ${esc(annText||user)}`;
+        noticeClass='shared-notice';
+      }
+      else if(msgType==='charity'){
+        subText=`💝 <b>${userLink}</b> hat für einen guten Zweck gespendet!`;
+      }
+      // Also catch any unknown msg-id for debugging
+      else if(msgType&&msgType!==''){
+        // Show unknown events as info
+        const sysMsg=tags['system-msg']||'';
+        if(sysMsg){subText=`ℹ️ ${esc(sysMsg.replace(/\s/g,' '))}`;}
+      }
+      if(subText)addSpecialNotice(s,subText,noticeClass||'sub-msg',eventData||null);
     }
     // Follow (CLEARCHAT / USERNOTICE workaround - use follow tag)
     if(raw.includes('msg-id=follow')){
@@ -2216,7 +2239,11 @@ function renderFollowsGrid(list){
         <button class="btn bg bsm" onclick="trackFollowUser('${f.broadcaster_login}')" ${alreadyTrackingUser?'style="opacity:.5"':''}>
           ${alreadyTrackingUser?'✅ Verfolgt':'👀 Verfolgen'}
         </button>
+        <button class="btn bg bsm" onclick="toggleVods('${f.broadcaster_id}','${f.broadcaster_login}',this)" title="Frühere Streams anzeigen">
+          🎬 VODs
+        </button>
       </div>
+      <div id="vods-${f.broadcaster_id}" style="display:none"></div>
     </div>`;
   }).join('');
 }
@@ -2257,6 +2284,55 @@ function trackFollowUser(login){
     trackedUsers[login]={name:login,stream:null,lastJoin:null,totalTime:0,timeline:[],ws:null,pingInterval:null,firstSeen:new Date(),twitchCreated:null,currentStreamChannel:null,pendingChannel:null,scanning:false,scanInterval:null};
     createUserCard(login);fetchUser(login);
   }
+}
+
+async function toggleVods(uid, login, btn){
+  const container=document.getElementById('vods-'+uid);
+  if(!container)return;
+  if(container.style.display==='block'){
+    container.style.display='none';
+    btn.textContent='🎬 VODs';
+    return;
+  }
+  container.style.display='block';
+  btn.textContent='⏳ Lädt...';
+  btn.disabled=true;
+  container.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0"><span class="spinner"></span>Lade Videos...</div>';
+  try{
+    const headers={'Client-ID':CLIENT_ID,'Authorization':'Bearer '+(followsToken||TOKEN)};
+    const r=await fetch(`https://api.twitch.tv/helix/videos?user_id=${uid}&first=10&type=all`,{headers});
+    const d=await r.json();
+    const vods=d.data||[];
+    if(!vods.length){
+      container.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;border-top:1px solid var(--border);margin-top:6px">Keine Videos verfügbar</div>';
+      btn.textContent='🎬 VODs';btn.disabled=false;return;
+    }
+    let html='<div class="vod-section"><div class="vod-title"><span>🎬 Videos & frühere Streams</span><a href="https://twitch.tv/'+login+'/videos" target="_blank" style="color:#9146FF;font-size:10px;text-decoration:none">Alle →</a></div>';
+    vods.forEach(v=>{
+      const typeLabel=v.type==='archive'?'Übertragung':v.type==='highlight'?'Highlight':'Upload';
+      const typeClass=v.type==='archive'?'archive':v.type==='highlight'?'highlight':'upload';
+      const thumb=v.thumbnail_url?v.thumbnail_url.replace('%{width}','320').replace('%{height}','180'):'';
+      const dur=v.duration||'';
+      const date=v.created_at?new Date(v.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+      const views=v.view_count?num(v.view_count)+' Aufrufe':'';
+      html+=`<a href="${v.url}" target="_blank" class="vod-item">
+        ${thumb?`<img src="${thumb}" class="vod-thumb" loading="lazy" onerror="this.style.display='none'">`:'<div class="vod-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px">🎬</div>'}
+        <div class="vod-info">
+          <div class="vod-name">${esc(v.title||'Ohne Titel')}</div>
+          <div class="vod-meta">${date}${views?' · '+views:''}</div>
+          <div style="display:flex;gap:4px;margin-top:2px">
+            <span class="vod-type ${typeClass}">${typeLabel}</span>
+            ${dur?`<span class="vod-duration">⏱️ ${dur}</span>`:''}
+          </div>
+        </div>
+      </a>`;
+    });
+    html+='</div>';
+    container.innerHTML=html;
+  }catch(e){
+    container.innerHTML=`<div style="font-size:11px;color:#eb0400;padding:8px 0;border-top:1px solid var(--border);margin-top:6px">Fehler: ${e.message}</div>`;
+  }
+  btn.textContent='🎬 VODs ▲';btn.disabled=false;
 }
 
 function trackAllLive(){
