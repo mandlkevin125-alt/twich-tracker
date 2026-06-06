@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Twitch Tracker Pro</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.2rem;transition:background .2s,color .2s}
+:root{
+  --bg:#0e0e10;--text:#efeff1;--card:#18181b;--border:#2a2a2e;--border2:#1a1a1e;
+  --input-bg:#0e0e10;--input-border:#3a3a3e;--muted:#adadb8;--muted2:#555;
+  --sub-bg:#0e0e10;--stat-bg:#0e0e10;--mod-bg:#0e0e10;
+}
+body.light{
+  --bg:#e8e8f0;--text:#1a1a2e;--card:#f0f0f8;--border:#c0c0d4;--border2:#d0d0e4;
+  --input-bg:#e8e8f0;--input-border:#a0a0b8;--muted:#444466;--muted2:#777788;
+  --sub-bg:#e0e0ec;--stat-bg:#e4e4f0;--mod-bg:#e0e0ec;
+}
+body.theme-purple{
+  --bg:#1a0a2e;--text:#e8d5ff;--card:#2a1040;--border:#4a2060;--border2:#3a1850;
+  --input-bg:#1a0a2e;--input-border:#5a2878;--muted:#b080e0;--muted2:#7040a0;
+  --sub-bg:#140820;--stat-bg:#1e0e34;--mod-bg:#140820;
+}
+body.theme-blue{
+  --bg:#0a0e1a;--text:#d0e8ff;--card:#0e1828;--border:#1e3050;--border2:#182840;
+  --input-bg:#0a0e1a;--input-border:#2040708;--muted:#6090c0;--muted2:#304860;
+  --sub-bg:#080c18;--stat-bg:#0c1422;--mod-bg:#080c18;
+}
+body.theme-green{
+  --bg:#0a1a0e;--text:#d0ffd8;--card:#0e280e;--border:#1e4020;--border2:#183018;
+  --input-bg:#0a1a0e;--input-border:#2a5030;--muted:#60b060;--muted2:#305030;
+  --sub-bg:#081408;--stat-bg:#0c1e0c;--mod-bg:#081408;
+}
+body.theme-red{
+  --bg:#1a0a0a;--text:#ffe0d0;--card:#280e0e;--border:#401e1e;--border2:#301818;
+  --input-bg:#1a0a0a;--input-border:#502828;--muted:#c06060;--muted2:#603030;
+  --sub-bg:#140808;--stat-bg:#1e0c0c;--mod-bg:#140808;
+}
+.app{max-width:1400px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:#9146FF;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+h1{font-size:18px;font-weight:700}
+.tabs{display:flex;gap:5px;margin-bottom:1rem;flex-wrap:wrap}
+.tab{padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);font-weight:500}
+.tab.active{background:#9146FF;border-color:#9146FF;color:#fff}
+.panel{display:none}.panel.active{display:block}
+.toolbar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-bottom:.8rem;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.ff{display:flex;flex-direction:column;gap:3px;flex:1;min-width:130px}
+.fl{font-size:11px;color:var(--muted);margin-bottom:3px}
+input[type=text]{background:var(--sub-bg);border:1px solid var(--input-border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:13px;outline:none;height:34px;width:100%}
+input[type=text]:focus{border-color:#9146FF}
+input[type=range]{accent-color:#9146FF}
+select{background:var(--sub-bg);border:1px solid var(--input-border);border-radius:7px;padding:5px 8px;color:var(--text);font-size:12px;height:34px;outline:none}
+select:focus{border-color:#9146FF}
+.btn{border:none;border-radius:7px;padding:0 14px;height:34px;font-size:13px;cursor:pointer;font-weight:500;white-space:nowrap}
+.bp{background:#9146FF;color:#fff}.bp:hover{background:#7B2FE0}
+.br{background:#eb0400;color:#fff}.br:hover{background:#c00}
+.bg{background:var(--input-border);color:var(--text)}.bg:hover{background:var(--border)}
+.bsm{height:24px;font-size:11px;padding:0 9px}
+.btog{background:var(--border);color:var(--muted);border:1px solid var(--input-border)}.btog.on{background:#9146FF22;color:#9146FF;border-color:#9146FF}
+/* FAVORITES */
+.favs-bar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.6rem;align-items:center}
+.fav-chip{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:12px;cursor:pointer;transition:.15s}
+.fav-chip:hover{border-color:#9146FF;color:#9146FF}
+.fav-chip .fav-del{color:var(--muted2);font-size:10px;cursor:pointer;padding:0 2px}.fav-chip .fav-del:hover{color:#eb0400}
+.fav-label{font-size:11px;color:var(--muted2);margin-right:2px}
+.save-btn{background:#00c85322;border:1px solid #00c85344;color:#00c853}
+.save-btn:hover{background:#00c85344}
+.profile-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center}
+.profile-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;width:420px;max-width:95vw}
+.profile-box h2{font-size:16px;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+.profile-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:var(--sub-bg);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;transition:.15s}
+.profile-item:hover{border-color:#9146FF}
+.profile-item.active-profile{border-color:#00c853;background:#00c85311}
+.profile-item-name{flex:1;font-size:13px;font-weight:500}
+.profile-item-info{font-size:10px;color:var(--muted2)}
+.profile-item-actions{display:flex;gap:4px}
+.profile-name-input{background:var(--sub-bg);border:1px solid var(--input-border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:13px;outline:none;height:34px;flex:1}
+.profile-name-input:focus{border-color:#9146FF}
+.save-btn:hover{background:#00c85344}
+
+/* GRID LAYOUTS */
+.cards-grid{display:grid;gap:10px;align-items:start;width:100%}
+.cards-grid.layout-1{grid-template-columns:1fr}
+.cards-grid.layout-2{grid-template-columns:repeat(2,1fr)}
+.cards-grid.layout-3{grid-template-columns:repeat(3,1fr)}
+.cards-grid.layout-4{grid-template-columns:repeat(4,1fr)}
+.cards-grid.layout-auto{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+/* DRAGGABLE CARDS */
+.dcard{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:.9rem;cursor:default;transition:box-shadow .15s;position:relative;overflow:hidden}
+.dcard.dragging{opacity:.5;box-shadow:0 0 0 2px #9146FF}
+.dcard.drag-over{box-shadow:0 0 0 2px #9146FF44}
+.dcard.instream{border-color:#9146FF}
+.dcard.live-border{border-color:#eb0400}
+.drag-handle{cursor:grab;color:var(--input-border);font-size:14px;padding:0 4px;user-select:none}
+.drag-handle:hover{color:#9146FF}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.card-actions{display:flex;gap:4px;align-items:center}
+.cname{font-size:14px;font-weight:700;color:#9146FF;text-decoration:none}
+.cname:hover{text-decoration:underline}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.badge.live{background:#3a0000;color:#eb0400}
+.badge.offline{background:var(--border2);color:var(--muted2)}
+.info-row{font-size:11px;color:var(--muted);margin:2px 0}
+.info-row .val{color:var(--text);font-weight:500}
+.stream-box{background:var(--sub-bg);border-radius:7px;padding:7px 9px;margin:6px 0;border:1px solid var(--border)}
+.sb-title{font-size:12px;font-weight:600;margin-bottom:3px}
+.sb-info{font-size:11px;color:var(--muted);margin:1px 0}
+/* RESIZABLE CHAT */
+.chat-section{margin-top:7px}
+.chat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:4px}
+.chat-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.chat-controls{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.chat-filter{height:24px;font-size:11px;padding:0 7px;width:110px;background:var(--sub-bg);border:1px solid var(--input-border);color:var(--text)}
+.chat-box{overflow-y:auto;background:var(--sub-bg);border-radius:7px;padding:5px;border:1px solid var(--border);resize:none;min-height:80px;width:100%}
+.chat-msg{font-size:12px;padding:2px 0;border-bottom:1px solid var(--border2);line-height:1.4}
+.chat-msg:last-child{border-bottom:none}
+.chat-ts{color:var(--muted2);font-size:10px;margin-right:3px}
+.chat-user{color:#9146FF;font-weight:600;cursor:pointer}
+.chat-user:hover{text-decoration:underline}
+.chat-msg.filtered-out{display:none}
+.chat-msg.filter-match{background:#9146FF22;border-radius:3px;padding:2px 3px}
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:6px 0}
+.stat{background:var(--sub-bg);border-radius:6px;padding:6px 8px;border:1px solid var(--border2);text-align:center}
+.stat-l{font-size:9px;color:var(--muted);margin-bottom:1px}
+.stat-v{font-size:13px;font-weight:700}
+.stat-v.purple{color:#9146FF}.stat-v.red{color:#eb0400}.stat-v.gold{color:#f0a500}.stat-v.green{color:#00c853}
+/* TIMELINE */
+.tl-wrap{margin-top:6px}
+.tl-inner{background:var(--sub-bg);border-radius:7px;padding:5px 8px;border:1px solid var(--border);max-height:100px;overflow-y:auto}
+.tl-entry{font-size:11px;padding:2px 0;border-bottom:1px solid var(--border2);color:var(--muted)}
+.tl-entry:last-child{border-bottom:none}
+.tl-time{color:var(--muted2);font-size:10px;margin-right:4px}
+.tl-ev{color:#9146FF}
+/* SIZE SLIDER ROW */
+.slider-row{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2);margin-bottom:4px;flex-wrap:wrap}
+.slider-row input[type=range]{width:60px;height:3px}
+/* EMPTY */
+.empty-g{text-align:center;padding:2.5rem;color:var(--muted);width:100%}
+.empty-g .big{font-size:30px;margin-bottom:6px}
+/* ANIMS */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:#9146FF;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:4px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted2);display:inline-block;flex-shrink:0}
+.dot.live{background:#eb0400;animation:pulse 1.5s infinite}
+.dot.on{background:#00c853}.dot.off{background:var(--muted2)}
+.dot.conn{background:#FFA500;animation:blink 1s infinite}
+.dot.err{background:#eb0400}
+.status-line{font-size:9px;color:var(--input-border);margin-top:4px}
+.sub-msg{background:linear-gradient(90deg,#9146FF22,#f0a50022);border:1px solid #9146FF44;border-radius:6px;padding:4px 8px;margin:3px 0;font-size:12px;animation:subpop .5s ease}
+.sub-msg .sub-icon{color:#f0a500;font-weight:700;margin-right:4px}
+@keyframes subpop{0%{transform:scale(.95);opacity:.5}100%{transform:scale(1);opacity:1}}
+.dcard.locked{outline:2px solid #9146FF44}
+.dcard.locked .drag-handle{opacity:.2;cursor:not-allowed}
+.resize-handle{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:40px;height:10px;cursor:s-resize;display:flex;align-items:center;justify-content:center;opacity:.4}
+.resize-handle::after{content:'▼';font-size:8px;color:var(--muted)}
+.resize-handle:hover{opacity:1}
+.resize-handle:hover::after{color:#9146FF}
+.dcard.locked .resize-handle{display:none}
+.divider{border:none;border-top:1px solid var(--border);margin:6px 0}
+.bits-msg{background:linear-gradient(90deg,#f0a50011,#ffcc0011);border:1px solid #f0a50033;border-radius:6px;padding:4px 8px;margin:3px 0;font-size:12px;animation:subpop .4s ease}
+.follow-msg{background:linear-gradient(90deg,#00c85311,transparent);border:1px solid #00c85333;border-radius:6px;padding:4px 8px;margin:3px 0;font-size:12px;animation:subpop .4s ease}
+.chat-paused{opacity:.6;pointer-events:none}
+.pause-btn.paused{background:#eb040022;color:#eb0400;border-color:#eb040044}
+.slow-indicator{font-size:9px;color:#FFA500;margin-left:4px}
+.shared-badge{display:inline-flex;align-items:center;gap:3px;background:#00bcd411;border:1px solid #00bcd433;border-radius:4px;padding:1px 5px;font-size:9px;color:#00bcd4;margin-right:3px;font-weight:600}
+.shared-notice{background:linear-gradient(90deg,#00bcd411,transparent);border:1px solid #00bcd433;border-radius:6px;padding:5px 8px;margin:4px 0;font-size:12px}
+.shared-panel{background:var(--sub-bg);border:1px solid #00bcd433;border-radius:7px;padding:7px 9px;margin:5px 0}
+.shared-panel-title{font-size:10px;color:#00bcd4;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.mod-panel{background:var(--sub-bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;margin:5px 0}
+.mod-panel-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.user-chips{display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto}
+.mod-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:500;border:1px solid}
+.mod-chip.mod{background:#00aa0011;border-color:#00aa0044;color:#00aa00}
+.mod-chip.mod:hover{background:#00aa0033}
+.mod-chip.vip{background:#e91e8c11;border-color:#e91e8c44;color:#e91e8c}
+.mod-chip.vip:hover{background:#e91e8c33}
+.session-bar{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;margin:4px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.sbar-item{text-align:center}
+.sbar-l{font-size:9px;color:var(--muted2)}
+.sbar-v{font-size:13px;font-weight:700}
+</style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🎮</div>
+      <h1>Twitch Tracker Pro</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;color:#adadb8">Layout:</span>
+      <select onchange="setLayout(this.value)" id="layoutSel">
+        <option value="layout-auto">Auto</option>
+        <option value="layout-1">1 Spalte (untereinander)</option>
+        <option value="layout-2">2 Spalten</option>
+        <option value="layout-3">3 Spalten</option>
+        <option value="layout-4">4 Spalten</option>
+      </select>
+      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+        <button class="btn save-btn" onclick="openProfileManager()" title="Sessions verwalten">💾 Sessions</button>
+        <button class="btn bg bsm" id="slot1-btn" onclick="quickSaveLoad(1,event.shiftKey)" title="Klick=Laden | Shift+Klick=Speichern" style="min-width:80px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📌 Slot 1</button>
+        <button class="btn bg bsm" id="slot2-btn" onclick="quickSaveLoad(2,event.shiftKey)" title="Klick=Laden | Shift+Klick=Speichern" style="min-width:80px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📌 Slot 2</button>
+        <div style="font-size:11px;color:#00c853;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3px 10px">✅ Bereit</div>
+        <div id="sync-status" style="font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer" onclick="openSyncModal()" title="Cloud Sync">☁️ Sync</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:6px">
+    <div class="tabs" style="margin-bottom:0">
+      <div class="tab active" onclick="switchTab('users')">👀 Zuschauer verfolgen</div>
+      <div class="tab" onclick="switchTab('streamers')">📺 Streamer beobachten</div>
+      <div class="tab" onclick="switchTab('stats')">📊 Statistik</div>
+      <div class="tab" onclick="switchTab('follows')">💜 Meine Follows</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+      <button class="btn bg bsm" id="themeBtn" onclick="toggleTheme()" title="Hell/Dunkel wechseln" style="font-size:13px">🌙 Dunkel</button>
+      <button onclick="setTheme('dark')" title="Dunkel" style="width:20px;height:20px;border-radius:50%;background:#0e0e10;border:2px solid #555;cursor:pointer" id="color-dark"></button>
+      <button onclick="setTheme('light')" title="Hell" style="width:20px;height:20px;border-radius:50%;background:#e8e8f0;border:2px solid #aaa;cursor:pointer" id="color-light"></button>
+      <button onclick="setTheme('purple')" title="Lila" style="width:20px;height:20px;border-radius:50%;background:#9146FF;border:2px solid #7030dd;cursor:pointer" id="color-purple"></button>
+      <button onclick="setTheme('blue')" title="Blau" style="width:20px;height:20px;border-radius:50%;background:#1a4080;border:2px solid #1060c0;cursor:pointer" id="color-blue"></button>
+      <button onclick="setTheme('green')" title="Grün" style="width:20px;height:20px;border-radius:50%;background:#1a5020;border:2px solid #30a040;cursor:pointer" id="color-green"></button>
+      <button onclick="setTheme('red')" title="Rot" style="width:20px;height:20px;border-radius:50%;background:#501010;border:2px solid #c03030;cursor:pointer" id="color-red"></button>
+    </div>
+  </div>
+
+  <!-- PROFILE MANAGER MODAL -->
+  <div class="profile-modal" id="profileModal" style="display:none" onclick="if(event.target===this)closeProfileManager()">
+    <div class="profile-box">
+      <h2>💾 Sessions <span style="cursor:pointer;color:#555;font-size:18px" onclick="closeProfileManager()">✕</span></h2>
+      <div style="display:flex;gap:6px;margin-bottom:.5rem">
+        <input type="text" class="profile-name-input" id="newProfileName" placeholder="Session-Name eingeben..." onkeydown="if(event.key==='Enter')saveProfile()"/>
+        <button class="btn bp" onclick="saveProfile()">💾 Speichern</button>
+      </div>
+      <div style="font-size:11px;color:#555;margin-bottom:.8rem" id="profileCurrentInfo"></div>
+      <div style="font-size:11px;color:#adadb8;margin-bottom:.6rem;padding:6px 8px;background:var(--sub-bg);border-radius:6px;border:1px solid var(--border)">
+        📌 Oben rechts anzeigen: 
+        <select id="slot1Select" onchange="assignSlot(1,this.value)" style="background:var(--sub-bg);border:1px solid var(--input-border);border-radius:5px;color:#efeff1;font-size:11px;padding:2px 4px;margin-left:4px">
+          <option value="">Slot 1 – leer</option>
+        </select>
+        <select id="slot2Select" onchange="assignSlot(2,this.value)" style="background:var(--sub-bg);border:1px solid var(--input-border);border-radius:5px;color:#efeff1;font-size:11px;padding:2px 4px;margin-left:4px">
+          <option value="">Slot 2 – leer</option>
+        </select>
+      </div>
+      <div id="profileList"></div>
+      <div style="font-size:11px;color:#555;margin-top:.8rem">💡 Klick auf eine Session um sie zu laden</div>
+    </div>
+  </div>
+
+
+
+  <!-- USERS -->
+  <div class="panel active" id="panel-users">
+    <div class="toolbar">
+      <div class="ff">
+        <div class="fl">Twitch-Username(n) – kommagetrennt</div>
+        <input type="text" id="userInput" placeholder="z.B. xqc, shroud"/>
+      </div>
+      <button class="btn bp" onclick="addUsers()">＋ Verfolgen</button>
+      <button class="btn bg" onclick="saveFav('users')" title="Als Favorit speichern">⭐ Speichern</button>
+    </div>
+    <div class="favs-bar" id="favs-users">
+      <span class="fav-label">⭐ Favoriten:</span>
+    </div>
+    <div class="cards-grid layout-auto" id="ugrid">
+      <div class="empty-g"><div class="big">👤</div><div>Gib einen Username ein</div></div>
+    </div>
+  </div>
+
+  <!-- STREAMERS -->
+  <div class="panel" id="panel-streamers">
+    <div class="toolbar">
+      <div class="ff">
+        <div class="fl">Streamer-Name(n) – kommagetrennt</div>
+        <input type="text" id="streamerInput" placeholder="z.B. shroud, ninja"/>
+      </div>
+      <button class="btn bp" onclick="addStreamers()">＋ Hinzufügen</button>
+      <button class="btn bg" onclick="saveFav('streamers')" title="Als Favorit speichern">⭐ Speichern</button>
+    </div>
+    <div class="favs-bar" id="favs-streamers">
+      <span class="fav-label">⭐ Favoriten:</span>
+    </div>
+    <div class="cards-grid layout-auto" id="sgrid">
+      <div class="empty-g"><div class="big">📺</div><div>Gib einen Streamer-Namen ein</div></div>
+    </div>
+  </div>
+
+  <!-- SYNC MODAL -->
+  <div id="syncModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:9999;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)closeSyncModal()">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;max-width:420px;width:90%">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
+        ☁️ Cloud Sync
+        <span style="cursor:pointer;color:var(--muted2)" onclick="closeSyncModal()">✕</span>
+      </h2>
+      <div id="sync-not-logged" style="display:block">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Mit Google einloggen um Daten zwischen PC und Handy zu synchronisieren.</p>
+        <button class="btn bp" onclick="syncLogin()" style="width:100%;margin-bottom:.5rem">🔵 Mit Google einloggen</button>
+      </div>
+      <div id="sync-logged" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:8px">
+          <img id="sync-avatar" src="" style="width:32px;height:32px;border-radius:50%">
+          <div>
+            <div id="sync-email" style="font-size:13px;font-weight:600"></div>
+            <div id="sync-last" style="font-size:10px;color:var(--muted)"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">
+          <button class="btn bp" onclick="syncUpload()">⬆️ Hochladen</button>
+          <button class="btn bg" onclick="syncDownload()">⬇️ Herunterladen</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:6px">
+          💡 <b>Hochladen</b> = Deine aktuellen Daten in die Cloud speichern<br>
+          💡 <b>Herunterladen</b> = Cloud-Daten auf dieses Gerät laden
+        </div>
+        <div id="sync-log" style="font-size:11px;color:var(--muted);min-height:20px"></div>
+        <button class="btn br bsm" onclick="syncLogout()" style="margin-top:8px;width:100%">Abmelden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOLLOWS PANEL -->
+  <div class="panel" id="panel-follows">
+    <div class="toolbar" style="gap:8px;flex-wrap:wrap;align-items:center">
+      <div id="follows-login-area" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">💜 Meine Follows</div>
+        <div id="follows-not-logged" style="display:flex;align-items:center;gap:8px;flex:1">
+          <span style="font-size:12px;color:var(--muted)">Mit Twitch einloggen um deine Follows zu sehen:</span>
+          <button class="btn bp" onclick="loginWithTwitch()" style="background:#9146FF">
+            <span style="font-size:13px">🟣 Mit Twitch einloggen</span>
+          </button>
+        </div>
+        <div id="follows-logged" style="display:none;align-items:center;gap:10px;flex:1">
+          <img id="follows-avatar" src="" style="width:28px;height:28px;border-radius:50%;border:2px solid #9146FF">
+          <span id="follows-username" style="font-size:13px;font-weight:600;color:#9146FF"></span>
+          <span id="follows-count" style="font-size:12px;color:var(--muted)"></span>
+          <button class="btn bg bsm" onclick="loadFollows()">↺ Aktualisieren</button>
+          <button class="btn br bsm" onclick="logoutTwitch()">Abmelden</button>
+        </div>
+      </div>
+      <div id="follows-filter-bar" style="display:none;width:100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="followsSearch" placeholder="🔍 Streamer suchen..." style="max-width:200px;height:30px;font-size:12px" oninput="filterFollows(this.value)">
+        <span id="follows-live-count" style="font-size:12px;color:var(--muted)"></span>
+        <button class="btn bg bsm btog" id="follows-live-only" onclick="toggleLiveOnly()" title="Nur Live anzeigen">🔴 Nur Live</button>
+        <button class="btn bp bsm" onclick="trackAllLive()" title="Alle Live-Kanäle tracken">＋ Alle Live tracken</button>
+      </div>
+    </div>
+    <div id="follows-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:.5rem"></div>
+  </div>
+
+  <!-- STATS PANEL -->
+  <div class="panel" id="panel-stats">
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;font-weight:600">📊 Statistik</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="btn bg bsm" onclick="exportStats('json')" title="Als JSON exportieren">⬇️ JSON</button>
+        <button class="btn bg bsm" onclick="exportStats('csv')" title="Als CSV exportieren">⬇️ CSV</button>
+        <button class="btn bg bsm" onclick="importStats()" title="Daten importieren">⬆️ Import</button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImport(this)">
+        <select id="statsFilter" onchange="renderStats()" style="height:32px;font-size:12px">
+          <option value="all">Alle Zeit</option>
+          <option value="today">Heute</option>
+          <option value="week">Diese Woche</option>
+          <option value="lastweek">Letzte Woche</option>
+          <option value="month">Dieser Monat</option>
+          <option value="lastmonth">Letzter Monat</option>
+          <option value="year">Dieses Jahr</option>
+        </select>
+        <select id="statsType" onchange="renderStats()" style="height:32px;font-size:12px">
+          <option value="all">Alle</option>
+          <option value="streamers">Nur Streamer</option>
+          <option value="users">Nur Zuschauer</option>
+        </select>
+        <button class="btn br bsm" onclick="clearStats()" title="Statistik löschen">🗑️ Leeren</button>
+      </div>
+    </div>
+    <div id="statsContent"></div>
+  </div>
+</div>
+
+<script>
+// ── STATISTICS STORAGE ──
+function getStats(){
+  try{return JSON.parse(localStorage.getItem('twitch_stats')||'{}');}catch(e){return {};}
+}
+function saveStats(s){localStorage.setItem('twitch_stats',JSON.stringify(s));}
+
+function recordEvent(type, name, data){
+  const stats=getStats();
+  const date=new Date().toISOString().split('T')[0];
+  if(!stats[date])stats[date]={};
+  if(!stats[date][name])stats[date][name]={type,name,subs:0,resubs:0,gifts:0,bits:0,messages:0,viewers_peak:0,follows:0,sessions:0,watch_mins:0,live_mins:0,games:{},top_subbers:{},top_gifters:{},top_bits:{}};
+  const e=stats[date][name];
+  if(!e.top_subbers)e.top_subbers={};
+  if(!e.top_gifters)e.top_gifters={};
+  if(!e.top_bits)e.top_bits={};
+  if(!e.games)e.games={};
+  if(data.subs){e.subs+=data.subs;if(data.user)e.top_subbers[data.user]=(e.top_subbers[data.user]||0)+data.subs;}
+  if(data.resubs){e.resubs+=data.resubs;if(data.user)e.top_subbers[data.user]=(e.top_subbers[data.user]||0)+data.resubs;}
+  if(data.gifts){e.gifts+=data.gifts;if(data.user)e.top_gifters[data.user]=(e.top_gifters[data.user]||0)+data.gifts;}
+  if(data.bits){e.bits+=data.bits;if(data.user)e.top_bits[data.user]=(e.top_bits[data.user]||0)+data.bits;}
+  if(data.messages)e.messages+=data.messages;
+  if(data.follows)e.follows+=data.follows;
+  if(data.viewers&&data.viewers>e.viewers_peak)e.viewers_peak=data.viewers;
+  if(data.watch_mins)e.watch_mins+=data.watch_mins;
+  if(data.live_mins)e.live_mins+=data.live_mins;
+  if(data.session)e.sessions+=1;
+  if(data.game&&data.game!=='–'){e.games[data.game]=(e.games[data.game]||0)+1;}
+  saveStats(stats);
+}
+
+function getFilteredStats(){
+  const stats=getStats();
+  const filter=document.getElementById('statsFilter')?.value||'all';
+  const type=document.getElementById('statsType')?.value||'all';
+  const now=new Date();
+  const filtered={};
+  Object.entries(stats).forEach(([date,channels])=>{
+    const d=new Date(date);
+    let include=true;
+    if(filter==='today'){include=date===now.toISOString().split('T')[0];}
+    else if(filter==='week'){const w=new Date(now);w.setDate(w.getDate()-7);include=d>=w;}
+    else if(filter==='lastweek'){
+      const s=new Date(now);s.setDate(s.getDate()-14);
+      const e=new Date(now);e.setDate(e.getDate()-7);
+      include=d>=s&&d<e;
+    }
+    else if(filter==='month'){include=d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}
+    else if(filter==='lastmonth'){
+      const lm=new Date(now.getFullYear(),now.getMonth()-1,1);
+      const lme=new Date(now.getFullYear(),now.getMonth(),0);
+      include=d>=lm&&d<=lme;
+    }
+    else if(filter==='year'){include=d.getFullYear()===now.getFullYear();}
+    if(include){
+      Object.entries(channels).forEach(([name,data])=>{
+        if(type==='streamers'&&data.type!=='streamer')return;
+        if(type==='users'&&data.type!=='user')return;
+        if(!filtered[name]){
+          filtered[name]={...data,days:new Set(),games:{},top_subbers:{},top_gifters:{},top_bits:{}};
+          if(data.games)Object.entries(data.games).forEach(([g,c])=>{filtered[name].games[g]=(filtered[name].games[g]||0)+c;});
+          if(data.top_subbers)Object.entries(data.top_subbers).forEach(([u,c])=>{filtered[name].top_subbers[u]=(filtered[name].top_subbers[u]||0)+c;});
+          if(data.top_gifters)Object.entries(data.top_gifters).forEach(([u,c])=>{filtered[name].top_gifters[u]=(filtered[name].top_gifters[u]||0)+c;});
+          if(data.top_bits)Object.entries(data.top_bits).forEach(([u,c])=>{filtered[name].top_bits[u]=(filtered[name].top_bits[u]||0)+c;});
+        } else {
+          filtered[name].subs+=data.subs||0;
+          filtered[name].resubs+=data.resubs||0;
+          filtered[name].gifts+=data.gifts||0;
+          filtered[name].bits+=data.bits||0;
+          filtered[name].messages+=data.messages||0;
+          filtered[name].follows+=data.follows||0;
+          filtered[name].watch_mins+=data.watch_mins||0;
+          filtered[name].live_mins=(filtered[name].live_mins||0)+(data.live_mins||0);
+          filtered[name].sessions+=data.sessions||0;
+          if((data.viewers_peak||0)>filtered[name].viewers_peak)filtered[name].viewers_peak=data.viewers_peak||0;
+          if(data.games)Object.entries(data.games).forEach(([g,c])=>{filtered[name].games[g]=(filtered[name].games[g]||0)+c;});
+          if(data.top_subbers)Object.entries(data.top_subbers).forEach(([u,c])=>{filtered[name].top_subbers[u]=(filtered[name].top_subbers[u]||0)+c;});
+          if(data.top_gifters)Object.entries(data.top_gifters).forEach(([u,c])=>{filtered[name].top_gifters[u]=(filtered[name].top_gifters[u]||0)+c;});
+          if(data.top_bits)Object.entries(data.top_bits).forEach(([u,c])=>{filtered[name].top_bits[u]=(filtered[name].top_bits[u]||0)+c;});
+        }
+        filtered[name].days.add(date);
+      });
+    }
+  });
+  // Convert days Set to count
+  Object.values(filtered).forEach(v=>{v.days=v.days.size;});
+  return filtered;
+}
+
+function renderStats(){
+  const data=getFilteredStats();
+  const el=document.getElementById('statsContent');
+  if(!el)return;
+  const entries=Object.entries(data);
+  if(!entries.length){
+    el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted)">Noch keine Statistiken – fange an Streamer/User zu verfolgen!</div>';
+    return;
+  }
+
+  // Totals
+  let totalSubs=0,totalResubs=0,totalGifts=0,totalBits=0,totalMsgs=0,totalFollows=0,totalMins=0,totalLiveMins=0;
+  entries.forEach(([,v])=>{
+    totalSubs+=v.subs||0;totalResubs+=v.resubs||0;totalGifts+=v.gifts||0;
+    totalBits+=v.bits||0;totalMsgs+=v.messages||0;totalFollows+=v.follows||0;
+    totalMins+=v.watch_mins||0;totalLiveMins+=v.live_mins||0;
+  });
+  const liveH=`${Math.floor(totalLiveMins/60)}h ${totalLiveMins%60}m`;
+  const watchH=`${Math.floor(totalMins/60)}h ${totalMins%60}m`;
+
+  let html=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:1rem">
+    <div class="stat" style="text-align:center"><div class="stat-l">🎉 Neue Subs</div><div class="stat-v" style="color:#f0a500">${totalSubs}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">🔁 Resubs</div><div class="stat-v purple">${totalResubs}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">🎁 Gift Subs</div><div class="stat-v" style="color:#00c853">${totalGifts}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">💎 Bits</div><div class="stat-v" style="color:#00bcd4">${totalBits.toLocaleString()}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">💚 Neue Follower</div><div class="stat-v" style="color:#00c853">${totalFollows}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">📺 Live Zeit</div><div class="stat-v" style="color:#eb0400">${liveH}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">⏱️ Zuschauzeit</div><div class="stat-v" style="color:#FFA500">${watchH}</div></div>
+    <div class="stat" style="text-align:center"><div class="stat-l">💬 Nachrichten</div><div class="stat-v" style="color:#9146FF">${totalMsgs.toLocaleString()}</div></div>
+  </div>`;
+
+  // Per-channel table
+
+  entries.sort((a,b)=>(b[1].subs+b[1].resubs+b[1].gifts+b[1].bits)-(a[1].subs+a[1].resubs+a[1].gifts+a[1].bits));
+
+  // Table header
+  html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1rem">
+    <div style="padding:8px 12px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1.4fr 0.5fr 0.6fr 0.6fr 0.6fr 0.6fr 0.6fr 0.7fr 0.7fr;gap:4px">
+      <div>Name</div><div>Typ</div><div>🎉 Subs</div><div>🔁 Resubs</div><div>🎁 Gifts</div><div>💎 Bits</div><div>💚 Follows</div><div>⏱️ Live Std</div><div>🎮 Spiele</div>
+    </div>`;
+
+  entries.forEach(([name,v],i)=>{
+    const bg=i%2===0?'':'background:var(--sub-bg);';
+    const typeLabel=v.type==='streamer'?'<span style="color:#eb0400;font-size:10px">📺</span>':'<span style="color:#9146FF;font-size:10px">👀</span>';
+    const liveH=v.live_mins?`${Math.floor(v.live_mins/60)}h ${v.live_mins%60}m`:'–';
+    const topGames=v.games?Object.entries(v.games).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g])=>g).join(', '):'–';
+    html+=`<div style="${bg}display:grid;grid-template-columns:1.4fr 0.5fr 0.6fr 0.6fr 0.6fr 0.6fr 0.6fr 0.7fr 0.7fr;gap:4px;padding:7px 12px;font-size:11px;border-bottom:1px solid var(--border2);align-items:center">
+      <div><a href="https://twitch.tv/${name}" target="_blank" style="color:#9146FF;font-weight:600;text-decoration:none">${name}</a></div>
+      <div>${typeLabel}</div>
+      <div style="color:#f0a500;font-weight:600">${v.subs}</div>
+      <div style="color:#9146FF">${v.resubs}</div>
+      <div style="color:#00c853">${v.gifts}</div>
+      <div style="color:#00bcd4">${v.bits.toLocaleString()}</div>
+      <div style="color:#00c853">${v.follows}</div>
+      <div style="color:#FFA500">${liveH}</div>
+      <div style="color:var(--muted);font-size:10px" title="${Object.keys(v.games||{}).join(', ')}">${topGames}</div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // Top Subbers / Gifters / Bits per channel
+  const channelsWithSubs=entries.filter(([,v])=>
+    (v.top_subbers&&Object.keys(v.top_subbers).length>0)||
+    (v.top_gifters&&Object.keys(v.top_gifters).length>0)||
+    (v.top_bits&&Object.keys(v.top_bits).length>0)
+  );
+  if(channelsWithSubs.length>0){
+    html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">🏆 Top Supporter</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">`;
+    channelsWithSubs.slice(0,6).forEach(([name,v])=>{
+      html+=`<div style="background:var(--sub-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:600;color:#9146FF;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">
+          <a href="https://twitch.tv/${name}" target="_blank" style="color:#9146FF;text-decoration:none">${name}</a>
+        </div>`;
+      // Top subbers
+      const topSubs=Object.entries(v.top_subbers||{}).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      if(topSubs.length>0){
+        html+=`<div style="font-size:10px;color:var(--muted);margin-bottom:3px">🎉 Meiste Subs</div>`;
+        topSubs.forEach(([u,c],i)=>{
+          const medal=i===0?'🥇':i===1?'🥈':'🥉';
+          html+=`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">
+            <span>${medal} <a href="https://twitch.tv/${esc(u)}" target="_blank" style="color:var(--text);text-decoration:none">${esc(u)}</a></span>
+            <span style="color:#f0a500;font-weight:600">${c}</span>
+          </div>`;
+        });
+      }
+      // Top gifters
+      const topGifts=Object.entries(v.top_gifters||{}).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      if(topGifts.length>0){
+        html+=`<div style="font-size:10px;color:var(--muted);margin-top:5px;margin-bottom:3px">🎁 Meiste Gifts</div>`;
+        topGifts.forEach(([u,c],i)=>{
+          const medal=i===0?'🥇':i===1?'🥈':'🥉';
+          html+=`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">
+            <span>${medal} <a href="https://twitch.tv/${esc(u)}" target="_blank" style="color:var(--text);text-decoration:none">${esc(u)}</a></span>
+            <span style="color:#00c853;font-weight:600">${c}</span>
+          </div>`;
+        });
+      }
+      // Top bits
+      const topBits=Object.entries(v.top_bits||{}).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      if(topBits.length>0){
+        html+=`<div style="font-size:10px;color:var(--muted);margin-top:5px;margin-bottom:3px">💎 Meiste Bits</div>`;
+        topBits.forEach(([u,c],i)=>{
+          const medal=i===0?'🥇':i===1?'🥈':'🥉';
+          html+=`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">
+            <span>${medal} <a href="https://twitch.tv/${esc(u)}" target="_blank" style="color:var(--text);text-decoration:none">${esc(u)}</a></span>
+            <span style="color:#00bcd4;font-weight:600">${c.toLocaleString()}</span>
+          </div>`;
+        });
+      }
+      html+='</div>';
+    });
+    html+='</div></div>';
+  }
+
+  // Games breakdown for streamers
+  const streamerEntries=entries.filter(([,v])=>v.type==='streamer'&&v.games&&Object.keys(v.games).length>0);
+  if(streamerEntries.length>0){
+    html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">🎮 Gespielte Spiele</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">`;
+    streamerEntries.slice(0,6).forEach(([name,v])=>{
+      const topG=Object.entries(v.games).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      html+=`<div style="background:var(--sub-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:600;color:#9146FF;margin-bottom:5px">${name}</div>`;
+      topG.forEach(([g,c])=>{
+        html+=`<div style="font-size:11px;color:var(--muted);display:flex;justify-content:space-between;padding:2px 0">
+          <span>${g}</span><span style="color:var(--text)">${Math.round(c)} min</span>
+        </div>`;
+      });
+      html+='</div>';
+    });
+    html+='</div></div>';
+  }
+
+  // Simple bar chart for top channels by subs
+  const top=entries.slice(0,8);
+  if(top.length>0&&top.some(([,v])=>v.subs+v.resubs+v.gifts>0)){
+    const maxSubs=Math.max(...top.map(([,v])=>v.subs+v.resubs+v.gifts));
+    html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-top:1rem">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">🎉 Top Kanäle nach Subs</div>`;
+    top.forEach(([name,v])=>{
+      const total=v.subs+v.resubs+v.gifts;
+      const pct=maxSubs>0?Math.round(total/maxSubs*100):0;
+      html+=`<div style="margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+          <a href="https://twitch.tv/${name}" target="_blank" style="color:#9146FF;text-decoration:none">${name}</a>
+          <span style="color:var(--muted)">${total}</span>
+        </div>
+        <div style="background:var(--sub-bg);border-radius:4px;height:8px;overflow:hidden">
+          <div style="background:linear-gradient(90deg,#9146FF,#f0a500);height:100%;width:${pct}%;border-radius:4px;transition:width .5s"></div>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  el.innerHTML=html;
+}
+
+function clearStats(){
+  if(!confirm('Alle Statistiken löschen?'))return;
+  localStorage.removeItem('twitch_stats');
+  renderStats();
+}
+</script>
+
+<script>
+
+const CLIENT_ID='oer7v3d9yr2e37gm4mriqq9pcelb85';
+const TOKEN='vkbymh7y4r5zp8kcsmc3q498od9lw9';
+const API='https://api.twitch.tv/helix';
+const H={'Client-ID':CLIENT_ID,'Authorization':'Bearer '+TOKEN};
+const trackedUsers={};
+const trackedStreamers={};
+const streamerInfoCache={};
+const sSettings={};
+let dragSrc=null;
+
+// ── HELPERS ──
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['users','streamers','stats','follows'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if(t==='stats')renderStats();
+  if(t==='follows')initFollowsTab();
+}
+function setLayout(v){
+  document.querySelectorAll('.cards-grid').forEach(g=>{
+    // remove old layout classes
+    g.classList.remove('layout-auto','layout-1','layout-2','layout-3','layout-4');
+    g.classList.add(v);
+  });
+}
+function esc(s){return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmt(d){try{return new Date(d).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return d||'–'}}
+function fmtT(d){try{return new Date(d).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}catch(e){return '–'}}
+function fmtFull(d){try{return new Date(d).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}catch(e){return '–'}}
+function dur(start){const s=Math.floor((Date.now()-new Date(start))/1000);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return h>0?`${h}h ${m}m ${sc}s`:`${m}m ${sc}s`}
+function num(n){if(!n)return'0';if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return String(n)}
+async function twitchGet(path){
+  const r=await fetch(`${API}/${path}`,{headers:H});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+// ── FAVORITES ──
+function loadFavs(){
+  ['users','streamers'].forEach(type=>{
+    const stored=JSON.parse(localStorage.getItem('twitch_favs_'+type)||'[]');
+    stored.forEach(f=>renderFavChip(type,f));
+  });
+}
+function saveFav(type){
+  const input=document.getElementById(type==='users'?'userInput':'streamerInput');
+  const val=input.value.trim();
+  if(!val){alert('Erst Namen eingeben!');return;}
+  const stored=JSON.parse(localStorage.getItem('twitch_favs_'+type)||'[]');
+  if(!stored.includes(val)){
+    stored.push(val);
+    localStorage.setItem('twitch_favs_'+type,JSON.stringify(stored));
+    renderFavChip(type,val);
+  }
+  if(type==='users')addUsers(); else addStreamers();
+}
+function renderFavChip(type,val){
+  const bar=document.getElementById('favs-'+type);
+  if(bar.querySelector(`[data-fav="${val}"]`))return;
+  const chip=document.createElement('span');
+  chip.className='fav-chip';chip.dataset.fav=val;
+  chip.innerHTML=`<span onclick="loadFav('${type}','${val}')">${val}</span><span class="fav-del" onclick="deleteFav('${type}','${val}',this.parentElement)">✕</span>`;
+  bar.appendChild(chip);
+}
+function loadFav(type,val){
+  const input=document.getElementById(type==='users'?'userInput':'streamerInput');
+  input.value=val;
+  if(type==='users')addUsers(); else addStreamers();
+}
+function deleteFav(type,val,chip){
+  const stored=JSON.parse(localStorage.getItem('twitch_favs_'+type)||'[]');
+  localStorage.setItem('twitch_favs_'+type,JSON.stringify(stored.filter(x=>x!==val)));
+  chip.remove();
+}
+
+// ── DRAG & DROP ──
+function initDrag(card){
+  card.draggable=true;
+  card.addEventListener('dragstart',e=>{dragSrc=card;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+  card.addEventListener('dragend',()=>{card.classList.remove('dragging');document.querySelectorAll('.dcard').forEach(c=>c.classList.remove('drag-over'));});
+  card.addEventListener('dragover',e=>{e.preventDefault();if(dragSrc&&dragSrc!==card){card.classList.add('drag-over');}});
+  card.addEventListener('dragleave',()=>card.classList.remove('drag-over'));
+  card.addEventListener('drop',e=>{
+    e.preventDefault();card.classList.remove('drag-over');
+    if(dragSrc&&dragSrc!==card){
+      const p=card.parentNode;
+      const cards=[...p.children];
+      const si=cards.indexOf(dragSrc),ti=cards.indexOf(card);
+      if(si<ti)p.insertBefore(dragSrc,card.nextSibling);
+      else p.insertBefore(dragSrc,card);
+    }
+  });
+}
+
+// ── LOCK & RESIZE ──
+function toggleLock(cardId, btnId){
+  const card = document.getElementById(cardId);
+  const btn = document.getElementById(btnId);
+  if(!card) return;
+  const isLocked = card.classList.toggle('locked');
+  card.draggable = !isLocked;
+  if(btn) { btn.textContent = isLocked ? '🔒' : '🔓'; btn.classList.toggle('on', isLocked); }
+}
+
+function initResize(card){
+  const handle = card.querySelector('.resize-handle');
+  if(!handle) return;
+  let startY, startH;
+  handle.addEventListener('mousedown', e=>{
+    e.preventDefault();
+    startY = e.clientY;
+    startH = card.offsetHeight;
+    function onMove(e){
+      const newH = Math.max(150, startH + e.clientY - startY);
+      card.style.height = newH+'px';
+      card.style.overflow = 'auto';
+    }
+    function onUp(){
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      // Auto-save card sizes to localStorage
+      saveCardSizes();
+      // Also update any active slot buttons
+      updateSlotButtonsAfterChange();
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+function saveCardSizes(){
+  const sizes={};
+  document.querySelectorAll('.dcard[id]').forEach(card=>{
+    if(card.style.height)sizes[card.id]=card.style.height;
+  });
+  localStorage.setItem('twitch_card_sizes', JSON.stringify(sizes));
+}
+
+function restoreCardSizes(){
+  try{
+    const sizes=JSON.parse(localStorage.getItem('twitch_card_sizes')||'{}');
+    Object.entries(sizes).forEach(([id,h])=>{
+      const el=document.getElementById(id);
+      if(el){el.style.height=h;el.style.overflow='auto';}
+    });
+  }catch(e){}
+}
+
+function updateSlotButtonsAfterChange(){
+  // Update slot buttons to reflect current state name if they were previously saved
+  [1,2].forEach(n=>{
+    const raw=localStorage.getItem('twitch_quickslot_'+n);
+    if(!raw)return;
+    try{
+      const p=JSON.parse(raw);
+      const btn=document.getElementById('slot'+n+'-btn');
+      if(btn)btn.textContent=`📌 ${p.name}`;
+    }catch(e){}
+  });
+}
+
+// ── USER TRACKING ──
+
+async function toggleScan(u){
+  const t=trackedUsers[u];if(!t)return;
+  const btn=document.getElementById('uscan-'+u);
+  const statusEl=document.getElementById('uscan-status-'+u);
+  if(t.scanning){
+    // Stop scan
+    t.scanning=false;
+    clearInterval(t.scanInterval);t.scanInterval=null;
+    if(btn){btn.textContent='🔍 Scan';btn.classList.remove('on');}
+    if(statusEl)statusEl.style.display='none';
+  } else {
+    // Start scan
+    t.scanning=true;
+    if(btn){btn.textContent='⏹ Stop';btn.classList.add('on');}
+    if(statusEl){statusEl.style.display='block';statusEl.innerHTML='<span class="spinner"></span>Starte Scan...';}
+    await scanTopStreams(u);
+    // Re-scan every 3 minutes
+    t.scanInterval=setInterval(()=>{if(t.scanning)scanTopStreams(u);},180000);
+  }
+}
+
+async function scanTopStreams(u){
+  const t=trackedUsers[u];if(!t||!t.scanning)return;
+  const statusEl=document.getElementById('uscan-status-'+u);
+
+  try{
+    if(statusEl)statusEl.innerHTML='<span class="spinner"></span>Lade Top-Streams...';
+
+    // Fetch top 100 live streams
+    let cursor='';
+    let allChannels=[];
+    for(let page=0;page<3;page++){
+      const url='streams?first=100'+(cursor?`&after=${cursor}`:'');
+      const data=await twitchGet(url);
+      if(!data.data||!data.data.length)break;
+      allChannels=[...allChannels,...data.data.map(s=>s.user_login)];
+      cursor=data.pagination?.cursor||'';
+      if(!cursor)break;
+    }
+
+    if(statusEl)statusEl.innerHTML=`<span class="spinner"></span>Scanne ${allChannels.length} Streams nach <b>${u}</b>...`;
+
+    // Join all channels via spy WS
+    let found=0;
+    let scanned=0;
+    const batchSize=20;
+
+    for(let i=0;i<allChannels.length;i+=batchSize){
+      if(!t.scanning)break;
+      const batch=allChannels.slice(i,i+batchSize);
+      batch.forEach(ch=>spyJoinChannel(ch));
+      scanned+=batch.length;
+      if(statusEl)statusEl.innerHTML=`<span class="spinner"></span>Scanne ${scanned}/${allChannels.length} Channels...${found>0?` <b style="color:#00c853">Gefunden in ${found} Channel(s)!</b>`:''}`;
+      await new Promise(r=>setTimeout(r,500));
+    }
+
+    if(statusEl){
+      if(found>0){
+        statusEl.innerHTML=`✅ Scan fertig – <b style="color:#00c853">${u} in ${found} Channel(s) gefunden!</b> Nachrichten werden automatisch angezeigt.`;
+      } else {
+        statusEl.innerHTML=`✅ Scan fertig (${allChannels.length} Streams) – <span style="color:var(--muted)">${u} hat noch nicht geschrieben. Scan läuft weiter...</span>`;
+      }
+    }
+  }catch(e){
+    if(statusEl)statusEl.innerHTML=`❌ Scan-Fehler: ${e.message}`;
+  }
+}
+
+// Track found channels per user for scan counter
+const userFoundChannels={};
+const origAddUserMsg_scan=null;
+
+function addUsers(){
+  const raw=document.getElementById('userInput').value.trim();
+  if(!raw){alert('Bitte Username eingeben!');return;}
+  const users=raw.split(',').map(u=>u.trim().toLowerCase()).filter(Boolean);
+  document.getElementById('userInput').value='';
+  const grid=document.getElementById('ugrid');
+  const empty=grid.querySelector('.empty-g');if(empty)empty.remove();
+  users.forEach(u=>{
+    if(trackedUsers[u])return;
+    trackedUsers[u]={name:u,stream:null,lastJoin:null,totalTime:0,timeline:[],ws:null,pingInterval:null,firstSeen:new Date(),twitchCreated:null,currentStreamChannel:null,pendingChannel:null,scanning:false,scanInterval:null};
+    createUserCard(u);fetchUser(u);
+  });
+}
+
+function createUserCard(u){
+  const grid=document.getElementById('ugrid');
+  const card=document.createElement('div');
+  card.className='dcard';card.id='uc-'+u;
+  card.innerHTML=`
+    <div class="card-top">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="drag-handle" title="Verschieben">⠿</span>
+        <div class="dot conn" id="udot-${u}"></div>
+        <a class="cname" id="uname-${u}" href="https://twitch.tv/${u}" target="_blank">${u}</a>
+        <div id="ubadge-${u}"></div>
+      </div>
+      <div class="card-actions">
+        <button class="btn bg bsm btog" id="uscan-${u}" onclick="toggleScan('${u}')" title="Top-Streams nach User durchsuchen">🔍 Scan</button>
+        <button class="btn bg bsm btog" id="ulock-${u}" onclick="toggleLock('uc-${u}','ulock-${u}')" title="Größe sperren">🔓</button>
+        <button class="btn bg bsm" onclick="fetchUser('${u}')">↺</button>
+        <button class="btn br bsm" onclick="removeUser('${u}')">✕</button>
+      </div>
+    </div>
+    <div class="resize-handle" id="uresize-${u}"></div>
+    </div>
+    <div id="uinfo-${u}" style="font-size:11px;color:#adadb8;margin:3px 0"><span class="spinner"></span></div>
+    <div id="uextra-${u}" style="font-size:10px;color:#555;margin:2px 0"></div>
+    <div id="ustream-${u}"></div>
+    <div class="tl-wrap" id="utl-${u}" style="display:none">
+      <div style="font-size:9px;color:#adadb8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">📋 Verlauf</div>
+      <div class="tl-inner" id="utl-inner-${u}"></div>
+    </div>
+    <div id="usi-box-${u}" style="display:none;margin-top:6px"></div>
+    <div id="umsgs-box-${u}" style="display:none;margin-top:7px">
+      <div class="chat-header">
+        <span class="chat-title">💬 Nachrichten</span>
+        <div class="chat-controls">
+          <span style="font-size:10px;color:#555">🔡</span>
+          <input type="range" min="10" max="20" value="12" style="width:55px;height:3px" oninput="document.getElementById('umsgs-${u}').style.fontSize=this.value+'px'">
+          <span style="font-size:10px;color:#555">↕</span>
+          <input type="range" min="80" max="500" value="140" style="width:55px;height:3px" oninput="document.getElementById('umsgs-${u}').style.maxHeight=this.value+'px'">
+        </div>
+      </div>
+      <div class="chat-box" id="umsgs-${u}" style="max-height:140px;font-size:12px"></div>
+    </div>
+    <div class="status-line" id="ustatus-${u}"></div>`;
+  grid.appendChild(card);
+  initDrag(card);
+  initResize(card);
+  startUserWS(u);
+}
+
+async function fetchUser(u){
+  const t=trackedUsers[u];if(!t)return;
+  document.getElementById('udot-'+u).className='dot conn';
+  try{
+    const data=await twitchGet(`users?login=${u}`);
+    const user=data.data[0];
+    if(!user){document.getElementById('uinfo-'+u).textContent='Nicht gefunden';document.getElementById('udot-'+u).className='dot err';return;}
+    const uid=user.id;
+    if(!t.twitchCreated&&user.created_at)t.twitchCreated=user.created_at;
+    const nl=document.getElementById('uname-'+u);
+    if(nl){nl.textContent=user.display_name;nl.href=`https://twitch.tv/${user.login}`;}
+    const streamData=await twitchGet(`streams?user_id=${uid}`);
+    const stream=streamData.data[0]||null;
+    // Also check if user is themselves live as a streamer
+    const userStream=stream||null; // if they are in a stream, check if it's their own channel
+    let followers=0;
+    try{const f=await twitchGet(`channels/followers?broadcaster_id=${uid}&first=1`);followers=f.total||0;}catch(e){}
+    // Check own stream separately
+    const ownStreamData=await twitchGet(`streams?user_login=${u}`);
+    const ownStream=ownStreamData.data[0]||null;
+    // Track when own stream ends
+    const t2=trackedUsers[u];
+    if(t2&&t2.ownStream&&!ownStream)t2.ownStreamEndTime=new Date();
+    renderUser(u,{user,stream,followers,userStream:ownStream});
+  }catch(e){
+    document.getElementById('uinfo-'+u).innerHTML=`❌ ${e.message}`;
+    document.getElementById('udot-'+u).className='dot err';
+  }
+}
+
+function renderUser(u,d){
+  const t=trackedUsers[u];if(!t)return;
+  const stream=d.stream,wasIn=t.stream!==null,isIn=!!stream;
+  const card=document.getElementById('uc-'+u);
+  if(isIn&&!wasIn){
+    t.stream=stream;t.lastJoin=new Date();
+    addTL(u,`▶ Trat ${stream.user_name}'s Stream bei`);
+    fetchAndShowStreamerInfo(u, stream.user_login);
+    card.classList.add('instream');
+    // Join the streamer's channel to capture user's messages
+    spyJoinChannel(stream.user_login);
+    t.currentStreamChannel=stream.user_login;
+    if(t.ws&&t.ws.readyState===1){
+      t.ws.send(`JOIN #${stream.user_login}`);
+    }
+  }else if(isIn&&wasIn&&t.currentStreamChannel!==stream.user_login){
+    // Switched to different stream
+    if(t.ws&&t.ws.readyState===1){
+      if(t.currentStreamChannel)t.ws.send(`PART #${t.currentStreamChannel}`);
+      t.ws.send(`JOIN #${stream.user_login}`);
+      t.currentStreamChannel=stream.user_login;
+    }
+    t.stream=stream;
+  }else if(!isIn&&wasIn){
+    const mins=t.lastJoin?Math.floor((Date.now()-t.lastJoin)/60000):0;
+    t.totalTime+=mins;
+    addTL(u,`◼ Verließ Stream (${mins} min)`);
+    if(mins>0)recordEvent('user',u,{watch_mins:mins});
+    t.stream=null;t.lastJoin=null;t.leftStreamTime=new Date();
+    card.classList.remove('instream');
+  }else if(isIn){
+    t.stream=stream;card.classList.add('instream');
+    // Make sure WS is joined to stream channel
+    if(t.ws&&t.ws.readyState===1&&t.currentStreamChannel!==stream.user_login){
+      t.ws.send(`JOIN #${stream.user_login}`);
+      t.currentStreamChannel=stream.user_login;
+    }
+  }
+
+  document.getElementById('ubadge-'+u).innerHTML=isIn?'<span class="badge live">🔴 LIVE</span>':'<span class="badge offline">● Offline</span>';
+  document.getElementById('udot-'+u).className=isIn?'dot live':'dot off';
+  document.getElementById('uinfo-'+u).innerHTML=`👥 Follower: <span class="val" style="color:#efeff1;font-weight:600">${num(d.followers)}</span>`;
+  const extraEl=document.getElementById('uextra-'+u);
+  if(extraEl)extraEl.innerHTML=`📅 Twitch seit: ${t.twitchCreated?fmt(t.twitchCreated):'–'} &nbsp;|&nbsp; 🕐 Verfolgt seit: ${fmtT(t.firstSeen)}`;
+
+  let shtml='';
+  if(isIn){
+    shtml=`<div class="stream-box">
+      <div class="sb-title">Schaut: <a href="https://twitch.tv/${stream.user_login}" target="_blank" style="color:#9146FF">${stream.user_name}</a></div>
+      <div class="sb-info">🎮 ${esc(stream.game_name||'–')}</div>
+      <div class="sb-info">💬 ${esc(stream.title||'–')}</div>
+      <div class="sb-info">👥 ${num(stream.viewer_count)} Zuschauer</div>
+      <div class="sb-info">📅 Stream gestartet: ${fmt(stream.started_at)}</div>
+      <div class="sb-info">📅 Beigetreten: ${t.lastJoin?fmtFull(t.lastJoin):'–'}</div>
+      <div class="sb-info" id="udur-${u}">⏱️ Im Stream seit: ${dur(stream.started_at)}</div>
+      <div class="sb-info">⏱️ Gesamtzeit: <b id="utotal-${u}">${t.totalTime+(t.lastJoin?Math.floor((Date.now()-t.lastJoin)/60000):0)} min</b></div>
+    </div>`;
+  }
+  // Show user's own stream status + offline info
+  let extraStreamHtml='';
+  if(!isIn){
+    if(t.leftStreamTime){
+      extraStreamHtml+=`<div class="sb-info" style="color:#adadb8;margin-top:4px">⏹️ Stream verlassen: ${fmtFull(t.leftStreamTime)} (${dur(t.leftStreamTime)} her)</div>`;
+    }
+    if(d.userStream){
+      extraStreamHtml+=`<div class="stream-box" style="border-color:#eb040044;margin-top:6px">
+        <div class="sb-title" style="color:#eb0400">🎥 Streamt selbst gerade!</div>
+        <div class="sb-info">🎮 ${esc(d.userStream.game_name||'–')}</div>
+        <div class="sb-info" id="uowndur-${u}">⏱️ Seit: ${dur(d.userStream.started_at)}</div>
+        <div class="sb-info">👥 ${num(d.userStream.viewer_count)} Zuschauer</div>
+      </div>`;
+      t.ownStream=d.userStream;
+    } else {
+      t.ownStream=null;
+      if(t.ownStreamEndTime){
+        extraStreamHtml+=`<div class="sb-info" style="color:#adadb8;margin-top:4px">📺 Letzter eigener Stream: ${fmtFull(t.ownStreamEndTime)} her</div>`;
+      }
+    }
+    if(extraStreamHtml) shtml=`<div class="stream-box">${extraStreamHtml}</div>`;
+  } else if(d.userStream){
+    t.ownStream=d.userStream;
+  }
+  document.getElementById('ustream-'+u).innerHTML=shtml;
+  document.getElementById('ustatus-'+u).textContent='Aktualisiert: '+fmtT(new Date());
+}
+
+function addTL(u,text){
+  const t=trackedUsers[u];if(!t)return;
+  t.timeline.push({time:fmtFull(new Date()),text});
+  const wrap=document.getElementById('utl-'+u);if(wrap)wrap.style.display='block';
+  const inner=document.getElementById('utl-inner-'+u);
+  if(inner)inner.innerHTML=t.timeline.slice(-10).reverse().map(e=>`<div class="tl-entry"><span class="tl-time">${e.time}</span><span class="tl-ev">${esc(e.text)}</span></div>`).join('');
+}
+
+async function fetchAndShowStreamerInfo(u, channel){
+  const cacheKey = channel;
+  // Update cache max every 2 min
+  const now = Date.now();
+  if(streamerInfoCache[cacheKey] && now - streamerInfoCache[cacheKey].ts < 120000){
+    renderStreamerInfoBox(u, streamerInfoCache[cacheKey].data);
+    return;
+  }
+  try{
+    const data = await twitchGet(`streams?user_login=${channel}`);
+    const stream = data.data[0] || null;
+    let followers = 0;
+    if(stream){
+      try{
+        const uid = stream.user_id;
+        const f = await twitchGet(`channels/followers?broadcaster_id=${uid}&first=1`);
+        followers = f.total || 0;
+      }catch(e){}
+    }
+    const info = {stream, followers, channel, ts: now};
+    streamerInfoCache[cacheKey] = {data: info, ts: now};
+    renderStreamerInfoBox(u, info);
+  }catch(e){}
+}
+
+function renderStreamerInfoBox(u, info){
+  const box = document.getElementById('usi-box-'+u);
+  if(!box) return;
+  if(!info.stream){
+    box.style.display = 'none';
+    return;
+  }
+  const s = info.stream;
+  box.style.display = 'block';
+  box.innerHTML = `<div class="stream-info-box">
+    <div class="si-title">
+      <a href="https://twitch.tv/${s.user_login}" target="_blank" style="color:#9146FF;text-decoration:none">📺 ${s.user_name}</a>
+      <span style="font-size:9px;color:#eb0400;font-weight:700">🔴 LIVE</span>
+    </div>
+    <div class="si-row">🎮 Spiel: <span>${esc(s.game_name||'–')}</span></div>
+    <div class="si-row">💬 Titel: <span>${esc(s.title||'–')}</span></div>
+    <div class="si-row">👥 Zuschauer: <span style="color:#eb0400;font-weight:600">${num(s.viewer_count)}</span> &nbsp;|&nbsp; Follower: <span style="color:#9146FF;font-weight:600">${num(info.followers)}</span></div>
+    <div class="si-row">⏱️ Live seit: <span>${dur(s.started_at)}</span> &nbsp;|&nbsp; 📅 ${fmt(s.started_at)}</div>
+  </div>`;
+}
+
+function addUserMsg(u,channel,text){
+  const t=trackedUsers[u];if(t){
+    t.lastMsgTime=new Date();
+    recordEvent('user',u,{messages:1});
+    // Update scan counter if scanning
+    if(t.scanning){
+      if(!userFoundChannels[u])userFoundChannels[u]=new Set();
+      if(!userFoundChannels[u].has(channel)){
+        userFoundChannels[u].add(channel);
+        const found=userFoundChannels[u].size;
+        const statusEl=document.getElementById('uscan-status-'+u);
+        if(statusEl)statusEl.innerHTML=`✅ <b style="color:#00c853">${u} aktiv in ${found} Channel(s)!</b> Zuletzt: <b>#${channel}</b>`;
+      }
+    }
+  }
+  // Show/update streamer info box
+  fetchAndShowStreamerInfo(u, channel);
+  const box=document.getElementById('umsgs-box-'+u);if(box)box.style.display='block';
+  const el=document.getElementById('umsgs-'+u);if(!el)return;
+  const item=document.createElement('div');item.className='chat-msg';
+  // Make channel name clickable → opens stream
+  item.innerHTML=`<span class="chat-ts">${fmtFull(new Date())}</span><a href="https://twitch.tv/${channel}" target="_blank" style="color:#FFA500;font-weight:600;font-size:10px;margin-right:3px">#${channel}</a><span style="color:#efeff1">${esc(text)}</span>`;
+  el.insertBefore(item,el.firstChild);
+  if(el.children.length>150)el.removeChild(el.lastChild);
+}
+
+// Global user spy WS - one connection for ALL tracked users across ALL joined channels
+let spyWS=null;
+let spyPing=null;
+const spyChannels=new Set();
+
+function initSpyWS(){
+  if(spyWS&&spyWS.readyState<=1)return;
+  spyWS=new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  spyWS.onopen=()=>{
+    spyWS.send('CAP REQ :twitch.tv/membership twitch.tv/tags twitch.tv/commands');
+    spyWS.send(`PASS oauth:${TOKEN}`);
+    spyWS.send(`NICK justinfan${Math.floor(Math.random()*999999)}`);
+    // Join all known channels
+    spyChannels.forEach(ch=>spyWS.send(`JOIN #${ch}`));
+    spyPing=setInterval(()=>{if(spyWS.readyState===1)spyWS.send('PING :tmi.twitch.tv');},55000);
+  };
+  spyWS.onmessage=(e)=>{
+    const raw=e.data;
+    if(raw.startsWith('PING')){spyWS.send('PONG :tmi.twitch.tv');return;}
+    const mm=raw.match(/^(?:@[^ ]+ )?:([^!]+)![^ ]+ PRIVMSG #([^ ]+) :(.+)$/m);
+    if(!mm)return;
+    const msgUser=mm[1].toLowerCase();
+    const channel=mm[2].toLowerCase();
+    const text=mm[3].trim();
+    // Check if this user is tracked
+    if(trackedUsers[msgUser]){
+      addUserMsg(msgUser,channel,text);
+    }
+  };
+  spyWS.onerror=()=>{};
+  spyWS.onclose=()=>{
+    clearInterval(spyPing);
+    // Reconnect after 5s
+    setTimeout(initSpyWS,5000);
+  };
+}
+
+function spyJoinChannel(channel){
+  if(!channel)return;
+  const ch=channel.toLowerCase();
+  if(spyChannels.has(ch))return;
+  spyChannels.add(ch);
+  if(spyWS&&spyWS.readyState===1)spyWS.send(`JOIN #${ch}`);
+  else initSpyWS();
+}
+
+function startUserWS(u){
+  // Join user's own channel + any known stream channel via spy WS
+  spyJoinChannel(u);
+  const t=trackedUsers[u];if(!t)return;
+  if(t.stream&&t.stream.user_login)spyJoinChannel(t.stream.user_login);
+  if(t.pendingChannel){spyJoinChannel(t.pendingChannel);t.pendingChannel=null;}
+  // Keep t.ws for backward compat (JOIN commands from renderUser)
+  t.ws={readyState:1,send:(msg)=>{
+    if(msg.startsWith('JOIN ')){
+      const ch=msg.replace('JOIN #','').trim();
+      spyJoinChannel(ch);
+    } else if(spyWS&&spyWS.readyState===1){
+      spyWS.send(msg);
+    }
+  }};
+  t.pingInterval=null;
+}
+
+function removeUser(u){
+  const t=trackedUsers[u];
+  if(t){
+    if(t.ws)try{t.ws.close()}catch(e){}
+    clearInterval(t.pingInterval);
+    clearInterval(t.scanInterval);
+    delete userFoundChannels[u];
+    delete trackedUsers[u];
+  }
+  const card=document.getElementById('uc-'+u);if(card)card.remove();
+  const grid=document.getElementById('ugrid');
+  if(!grid.children.length)grid.innerHTML='<div class="empty-g"><div class="big">👤</div><div>Gib einen Username ein</div></div>';
+}
+
+// ── STREAMER TRACKING ──
+function addStreamers(){
+  const raw=document.getElementById('streamerInput').value.trim();
+  if(!raw){alert('Bitte Streamer-Namen eingeben!');return;}
+  const streamers=raw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  document.getElementById('streamerInput').value='';
+  const grid=document.getElementById('sgrid');
+  const empty=grid.querySelector('.empty-g');if(empty)empty.remove();
+  streamers.forEach(s=>{
+    if(trackedStreamers[s])return;
+    sSettings[s]={direction:'top',filter:'',paused:false,slowMode:0,queue:[]};
+    trackedStreamers[s]={name:s,ws:null,pingInterval:null,chatCount:0,streamStart:null,subCount:0,resubCount:0,giftCount:0,bitsTotal:0,followCount:0,mods:new Set(),vips:new Set(),sharedChannels:new Map()};
+    createStreamerCard(s);fetchStreamer(s);
+  });
+}
+
+function createStreamerCard(s){
+  const grid=document.getElementById('sgrid');
+  const card=document.createElement('div');
+  card.className='dcard';card.id='sc-'+s;
+  card.innerHTML=`
+    <div class="card-top">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="drag-handle" title="Verschieben">⠿</span>
+        <div class="dot conn" id="scdot-${s}"></div>
+        <a class="cname" href="https://twitch.tv/${s}" target="_blank">${s}</a>
+        <div id="scbadge-${s}"></div>
+      </div>
+      <div class="card-actions">
+        <button class="btn bg bsm btog" id="sclock-${s}" onclick="toggleLock('sc-${s}','sclock-${s}')" title="Größe sperren">🔓</button>
+        <button class="btn bg bsm" onclick="fetchStreamer('${s}')">↺</button>
+        <button class="btn br bsm" onclick="removeStreamer('${s}')">✕</button>
+      </div>
+    </div>
+    <div class="resize-handle" id="scresize-${s}"></div>
+    </div>
+    <div id="scinfo-${s}"><span class="spinner"></span></div>
+    <div id="sc-session-${s}" style="display:none">
+      <div class="session-bar">
+        <div class="sbar-item"><div class="sbar-l">🎉 Subs</div><div class="sbar-v" id="sc-subs-v-${s}" style="color:#f0a500">0</div></div>
+        <div class="sbar-item"><div class="sbar-l">🔁 Resubs</div><div class="sbar-v" id="sc-resubs-v-${s}" style="color:#9146FF">0</div></div>
+        <div class="sbar-item"><div class="sbar-l">🎁 Gifts</div><div class="sbar-v" id="sc-gifts-v-${s}" style="color:#00c853">0</div></div>
+        <div class="sbar-item"><div class="sbar-l">💎 Bits</div><div class="sbar-v" id="sc-bits-v-${s}" style="color:#00bcd4">0</div></div>
+      </div>
+      <div class="session-bar" style="margin-top:4px;grid-template-columns:1fr 1fr 1fr">
+        <div class="sbar-item"><div class="sbar-l">💚 Neue Follower</div><div class="sbar-v" id="sc-follows-v-${s}" style="color:#00c853">0</div></div>
+        <div class="sbar-item"><div class="sbar-l">👥 Zuschauer live</div><div class="sbar-v" id="sc-viewers-v-${s}" style="color:#eb0400">–</div></div>
+        <div class="sbar-item"><div class="sbar-l">🕐 Beobachtet seit</div><div class="sbar-v" id="sc-watchsince-${s}" style="color:#adadb8;font-size:10px">–</div></div>
+      </div>
+      <div class="mod-panel" id="sc-mods-panel-${s}" style="display:none">
+        <div class="mod-panel-title">🛡️ Moderatoren <span id="sc-mods-cnt-${s}" style="color:#00aa00"></span></div>
+        <div class="user-chips" id="sc-mods-${s}"></div>
+      </div>
+      <div class="mod-panel" id="sc-vips-panel-${s}" style="display:none">
+        <div class="mod-panel-title">💎 VIPs (Community) <span id="sc-vips-cnt-${s}" style="color:#e91e8c"></span></div>
+        <div class="user-chips" id="sc-vips-${s}"></div>
+      </div>
+      <div class="shared-panel" id="sc-shared-panel-${s}" style="display:none">
+        <div class="shared-panel-title">🔗 Gemeinsamer Chat mit <span id="sc-shared-cnt-${s}" style="color:#00bcd4"></span></div>
+        <div class="user-chips" id="sc-shared-${s}"></div>
+      </div>
+    </div>
+    <div id="sc-subcounter-${s}" style="display:none">
+      <span style="color:#adadb8">📊 Subs diese Session: </span>
+      <span style="color:#f0a500;font-weight:700" id="sc-subs-${s}">0</span> neue &nbsp;|&nbsp;
+      <span style="color:#9146FF;font-weight:700" id="sc-resubs-${s}">0</span> resubs &nbsp;|&nbsp;
+      <span style="color:#00c853;font-weight:700" id="sc-gifts-${s}">0</span> gifts
+    </div>
+    <div id="scchat-wrap-${s}" style="display:none">
+      <div class="divider"></div>
+      <div class="chat-header">
+        <span class="chat-title">💬 Chat <span id="sccnt-${s}" style="color:#9146FF;font-weight:700"></span></span>
+        <div class="chat-controls">
+          <input type="text" class="chat-filter" placeholder="🔍 User filtern..." id="scfilter-${s}" oninput="applyFilter('${s}',this.value)">
+          <button class="btn bg bsm pause-btn" id="scpause-${s}" onclick="togglePause('${s}')" title="Chat pausieren">⏸</button>
+          <select class="btn bg bsm" style="height:24px;font-size:11px;padding:0 4px;background:var(--sub-bg);color:var(--text);border:1px solid var(--input-border)" onchange="setSlowMode('${s}',this.value)" title="Chat verlangsamen">
+            <option value="0">🐇 Normal</option>
+            <option value="500">🐢 0.5s</option>
+            <option value="1000">🐢 1s</option>
+            <option value="2000">🐢 2s</option>
+            <option value="5000">🐢 5s</option>
+          </select>
+          <button class="btn bg bsm btog" id="scdir-${s}" onclick="toggleDir('${s}')">⬆ Neu oben</button>
+        </div>
+      </div>
+      <div class="slider-row">
+        🔡 <input type="range" min="10" max="20" value="12" oninput="setChatSize('${s}',this.value)"> <span id="scfs-${s}">12px</span>
+        &nbsp;↕ <input type="range" min="80" max="600" value="200" oninput="setChatHeight('${s}',this.value)"> <span id="scfh-${s}">200px</span>
+      </div>
+      <div class="chat-box" id="scchat-${s}" style="max-height:200px;font-size:12px"></div>
+    </div>
+    <div class="status-line" id="scstatus-${s}"></div>`;
+  grid.appendChild(card);
+  initDrag(card);
+  initResize(card);
+}
+
+function setChatSize(s,v){const el=document.getElementById('scchat-'+s);if(el)el.style.fontSize=v+'px';const l=document.getElementById('scfs-'+s);if(l)l.textContent=v+'px';}
+function setChatHeight(s,v){const el=document.getElementById('scchat-'+s);if(el)el.style.maxHeight=v+'px';const l=document.getElementById('scfh-'+s);if(l)l.textContent=v+'px';}
+function toggleDir(s){
+  const st=sSettings[s];st.direction=st.direction==='top'?'bottom':'top';
+  const btn=document.getElementById('scdir-'+s);if(btn)btn.textContent=st.direction==='top'?'⬆ Neu oben':'⬇ Neu unten';
+  const chat=document.getElementById('scchat-'+s);if(!chat)return;
+  const msgs=[...chat.children];msgs.forEach(m=>chat.removeChild(m));
+  if(st.direction==='top')msgs.forEach(m=>chat.insertBefore(m,chat.firstChild));
+  else msgs.reverse().forEach(m=>chat.appendChild(m));
+}
+function applyFilter(s,val){
+  sSettings[s].filter=val.toLowerCase().trim();
+  const chat=document.getElementById('scchat-'+s);if(!chat)return;
+  [...chat.children].forEach(el=>{
+    const u=el.dataset.user||'';
+    if(!sSettings[s].filter){el.classList.remove('filtered-out','filter-match');}
+    else if(u.includes(sSettings[s].filter)){el.classList.remove('filtered-out');el.classList.add('filter-match');}
+    else{el.classList.add('filtered-out');el.classList.remove('filter-match');}
+  });
+}
+
+async function fetchStreamer(s){
+  document.getElementById('scdot-'+s).className='dot conn';
+  try{
+    const data=await twitchGet(`users?login=${s}`);
+    const user=data.data[0];
+    if(!user){document.getElementById('scinfo-'+s).textContent='Nicht gefunden';document.getElementById('scdot-'+s).className='dot err';return;}
+    const uid=user.id;
+    const streamData=await twitchGet(`streams?user_id=${uid}`);
+    const stream=streamData.data[0]||null;
+    let followers=0,subs='–';
+    try{const f=await twitchGet(`channels/followers?broadcaster_id=${uid}&first=1`);followers=f.total||0;}catch(e){}
+    try{const sb=await twitchGet(`subscriptions?broadcaster_id=${uid}&first=1`);subs=num(sb.total||0);}catch(e){}
+    renderStreamer(s,{user,stream,followers,subs,uid:user.id});
+  }catch(e){
+    document.getElementById('scinfo-'+s).innerHTML=`❌ ${e.message}`;
+    document.getElementById('scdot-'+s).className='dot err';
+  }
+}
+
+async function refreshViewers(s){
+  const t=trackedStreamers[s];if(!t||!t.stream)return;
+  try{
+    const data=await twitchGet(`streams?user_login=${s}`);
+    const stream=data.data[0]||null;
+    if(stream&&t.stream){
+      t.stream.viewer_count=stream.viewer_count;
+      const vel=document.getElementById('sc-viewers-v-'+s);
+      if(vel)vel.textContent=num(stream.viewer_count||0);
+    }
+  }catch(e){}
+}
+
+async function fetchModsVips(s,uid){
+  const t=trackedStreamers[s];if(!t)return;
+  t.mods.clear(); t.vips.clear();
+  // Fetch ALL moderators with pagination
+  try{
+    let cursor='';
+    do{
+      const url=`moderation/moderators?broadcaster_id=${uid}&first=100`+(cursor?`&after=${cursor}`:'');
+      const mdata=await twitchGet(url);
+      if(mdata.data){mdata.data.forEach(m=>{if(m.user_name)t.mods.add(m.user_name);});}
+      cursor=mdata.pagination?.cursor||'';
+    }while(cursor);
+    updateModVipPanel(s);
+  }catch(e){}
+  // Fetch ALL VIPs with pagination
+  try{
+    let cursor='';
+    do{
+      const url=`channels/vips?broadcaster_id=${uid}&first=100`+(cursor?`&after=${cursor}`:'');
+      const vdata=await twitchGet(url);
+      if(vdata.data){vdata.data.forEach(v=>{if(v.user_name)t.vips.add(v.user_name);});}
+      cursor=vdata.pagination?.cursor||'';
+    }while(cursor);
+    updateModVipPanel(s);
+  }catch(e){}
+}
+
+function renderStreamer(s,d){
+  const t=trackedStreamers[s];if(!t)return;
+  const stream=d.stream,isLive=!!stream;
+  const card=document.getElementById('sc-'+s);
+  isLive?card.classList.add('live-border'):card.classList.remove('live-border');
+  document.getElementById('scdot-'+s).className=isLive?'dot live':'dot off';
+  document.getElementById('scbadge-'+s).innerHTML=isLive?'<span class="badge live">🔴 LIVE</span>':'<span class="badge offline">● Offline</span>';
+  if(isLive){
+    if(!t.streamStart){t.streamStart=stream.started_at;}
+    if(!t.watchStartTime){t.watchStartTime=new Date();}
+    t.stream=stream;
+  } else {
+    if(t.streamStart){t.streamStart=null;t.watchStartTime=null;}
+    t.stream=null;
+  }
+
+  let html=`<div class="stat-row">
+    <div class="stat"><div class="stat-l">Follower</div><div class="stat-v purple">${num(d.followers)}</div></div>
+    <div class="stat" style="cursor:pointer" onclick="window.open('https://twitchtracker.com/${s}/subscribers','_blank')">
+      <div class="stat-l">Subs 📊</div>
+      <div class="stat-v gold" style="font-size:11px">TwitchTracker ↗</div>
+    </div>
+    <div class="stat"><div class="stat-l">Status</div><div class="stat-v" style="font-size:11px">${isLive?'🟢 Live':'⚫ Off'}</div></div>
+  </div>`;
+  if(isLive){
+    html+=`<div class="stream-box">
+      <div class="sb-info">🎮 ${esc(stream.game_name||'–')}</div>
+      <div class="sb-info">💬 ${esc(stream.title||'–')}</div>
+      <div class="sb-info">📅 Gestartet: ${fmt(stream.started_at)}</div>
+      <div class="sb-info" id="scdur-${s}">⏱️ Live seit: ${dur(stream.started_at)}</div>
+    </div>`;
+    if(!t.ws||t.ws.readyState>1)connectStreamerChat(s);
+    if(d.uid)fetchModsVips(s,d.uid);
+    // Also refresh mods/vips every 5 min
+    clearInterval(t.modsInterval);t.modsInterval=setInterval(()=>{if(d.uid)fetchModsVips(s,d.uid);},300000);
+    document.getElementById('scchat-wrap-'+s).style.display='block';
+    document.getElementById('sc-session-'+s).style.display='block';
+  }else{
+    if(t.ws){try{t.ws.close()}catch(e){}t.ws=null;}
+    document.getElementById('scchat-wrap-'+s).style.display='none';
+  }
+  document.getElementById('scinfo-'+s).innerHTML=html;
+  document.getElementById('scstatus-'+s).textContent='Aktualisiert: '+fmtT(new Date());
+}
+
+function connectStreamerChat(s){
+  const t=trackedStreamers[s];if(!t)return;
+  if(t.ws){try{t.ws.close()}catch(e){}}
+  clearInterval(t.pingInterval);
+  // Also add channel to spy WS so tracked users get their messages captured
+  spyJoinChannel(s);
+  const ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  t.ws=ws;t.chatCount=0;
+  ws.onopen=()=>{
+    ws.send('CAP REQ :twitch.tv/membership twitch.tv/tags twitch.tv/commands twitch.tv/subscriptions');
+    ws.send(`PASS oauth:${TOKEN}`);
+    ws.send(`NICK justinfan${Math.floor(Math.random()*999999)}`);
+    ws.send(`JOIN #${s}`);
+    t.pingInterval=setInterval(()=>{if(ws.readyState===1)ws.send('PING :tmi.twitch.tv');},55000);
+  };
+  ws.onmessage=(e)=>{
+    const raw=e.data;
+    if(raw.startsWith('PING')){ws.send('PONG :tmi.twitch.tv');return;}
+    // Normal chat message
+    const mm=raw.match(/^(?:@[^ ]+ )?:([^!]+)![^ ]+ PRIVMSG #[^ ]+ :(.+)$/m);
+    if(mm){
+      const msgTags={};const mtt=raw.match(/^@([^ ]+)/);
+      if(mtt){mtt[1].split(';').forEach(p=>{const[k,v]=p.split('=');msgTags[k]=v||'';});}
+      const isMod=msgTags['mod']==='1'||msgTags['user-type']==='mod';
+      const isVip=!!(msgTags['badges']&&msgTags['badges'].includes('vip'));
+      // Shared chat: source-room-login tells us which channel the message came from
+      const sourceLogin=msgTags['source-room-login']||msgTags['room-login']||'';
+      const sourceChannel=(sourceLogin&&sourceLogin!==s)?sourceLogin:'';
+      addStreamerChatMsg(s,mm[1],mm[2].trim(),isMod,isVip,sourceChannel);
+    }
+    // Bits
+    if(raw.includes('PRIVMSG')&&raw.includes('bits=')){
+      const bitsMatch=raw.match(/bits=(\d+)/);
+      const bmm=raw.match(/^(?:@[^ ]+ )?:([^!]+)![^ ]+ PRIVMSG #[^ ]+ :(.+)$/m);
+      if(bitsMatch&&bmm){
+        const bits=parseInt(bitsMatch[1]);
+        const buser=bmm[1];
+        const t2=trackedStreamers[s];
+        if(t2){t2.bitsTotal+=bits;const bel=document.getElementById('sc-bits-v-'+s);if(bel)bel.textContent=num(t2.bitsTotal);}
+        const bmsg=`💎 <b><span class="chat-user" onclick="window.open('https://twitch.tv/${esc(buser)}','_blank')">${esc(buser)}</span></b> hat <b style="color:#00bcd4">${bits} Bits</b> gegeben!`;
+        addSpecialNotice(s,bmsg,'bits-msg',{bits,user:buser});
+      }
+    }
+    // Sub / Resub / Gift Sub / Follow notifications
+    if(raw.includes('USERNOTICE')){
+      const tags={};
+      const tagMatch=raw.match(/^@([^ ]+)/);
+      if(tagMatch){tagMatch[1].split(';').forEach(p=>{const[k,v]=p.split('=');tags[k]=v||'';});}
+      const msgType=tags['msg-id']||'';
+      const user=tags['display-name']||tags['login']||'?';
+      const months=tags['msg-param-cumulative-months']||tags['msg-param-months']||'1';
+      const giftCount=tags['msg-param-mass-gift-count']||'1';
+      const recipient=tags['msg-param-recipient-display-name']||'';
+      const plan=tags['msg-param-sub-plan']||'';
+      const tier=plan==='Prime'?'Prime':plan==='3000'?'Tier 3':plan==='2000'?'Tier 2':'Tier 1';
+      const userLink=`<span class="chat-user" onclick="window.open('https://twitch.tv/${esc(user)}','_blank')">${esc(user)}</span>`;
+      const recipLink=`<span class="chat-user" onclick="window.open('https://twitch.tv/${esc(recipient)}','_blank')">${esc(recipient)}</span>`;
+      let subText='',noticeClass='sub-msg';
+      if(msgType==='sub'){subText=`🎉 <b>${userLink}</b> hat gerade subscribed! (${tier})`;const t2=trackedStreamers[s];if(t2){t2.subCount++;const el=document.getElementById('sc-subs-v-'+s);if(el)el.textContent=t2.subCount;}eventData={subs:1,user};}
+      else if(msgType==='resub'){subText=`🔁 <b>${userLink}</b> hat ${months}x resubscribed! (${tier})`;const t2=trackedStreamers[s];if(t2){t2.resubCount++;const el=document.getElementById('sc-resubs-v-'+s);if(el)el.textContent=t2.resubCount;}eventData={resubs:1,user};}
+      else if(msgType==='subgift'){subText=`🎁 <b>${userLink}</b> hat <b>${recipLink}</b> ein Sub geschenkt! (${tier})`;const t2=trackedStreamers[s];if(t2){t2.giftCount++;const el=document.getElementById('sc-gifts-v-'+s);if(el)el.textContent=t2.giftCount;}eventData={gifts:1,user};}
+      else if(msgType==='submysterygift'){subText=`🎁 <b>${userLink}</b> hat ${giftCount} Subs verschenkt!`;const t2=trackedStreamers[s];if(t2){t2.giftCount+=parseInt(giftCount);const el=document.getElementById('sc-gifts-v-'+s);if(el)el.textContent=t2.giftCount;}eventData={gifts:parseInt(giftCount),user};}
+      else if(msgType==='giftpaidupgrade'){subText=`⬆️ <b>${userLink}</b> hat ein geschenktes Sub fortgesetzt!`;}
+      else if(msgType==='primepaidupgrade'){subText=`👑 <b>${userLink}</b> hat von Prime auf bezahlt gewechselt!`;}
+      else if(msgType==='raid'){const raiders=tags['msg-param-viewerCount']||'?';subText=`⚔️ <b>${userLink}</b> raidet mit ${raiders} Zuschauern!`;}
+      if(subText)addSpecialNotice(s,subText,'sub-msg',eventData||null);
+    }
+    // Follow (CLEARCHAT / USERNOTICE workaround - use follow tag)
+    if(raw.includes('msg-id=follow')){
+      const tags={};const tm=raw.match(/^@([^ ]+)/);
+      if(tm){tm[1].split(';').forEach(p=>{const[k,v]=p.split('=');tags[k]=v||'';});}
+      const fu=tags['display-name']||tags['login']||'?';
+      const t2=trackedStreamers[s];if(t2){t2.followCount++;const el=document.getElementById('sc-follows-v-'+s);if(el)el.textContent=t2.followCount;}
+      const fmsg=`💚 <b><span class="chat-user" onclick="window.open('https://twitch.tv/${esc(fu)}','_blank')">${esc(fu)}</span></b> folgt jetzt!`;
+      addSpecialNotice(s,fmsg,'follow-msg',{follows:1});
+    }
+    // Mod/VIP detection from tags
+    const chatTags={};const ctm=raw.match(/^@([^ ]+)/);
+    if(ctm){ctm[1].split(';').forEach(p=>{const[k,v]=p.split('=');chatTags[k]=v||'';});}
+    const chatUser=chatTags['display-name']||'';
+    if(chatUser&&raw.includes('PRIVMSG')){
+      const t2=trackedStreamers[s];if(t2){
+        if(chatTags['mod']==='1'&&!t2.mods.has(chatUser)){t2.mods.add(chatUser);updateModVipPanel(s);}
+        if(chatTags['user-type']==='mod'&&!t2.mods.has(chatUser)){t2.mods.add(chatUser);updateModVipPanel(s);}
+        if(chatTags['badges']&&chatTags['badges'].includes('vip')&&!t2.vips.has(chatUser)){t2.vips.add(chatUser);updateModVipPanel(s);}
+      }
+    }
+  };
+  ws.onerror=()=>{};ws.onclose=()=>{clearInterval(t.pingInterval);};
+}
+
+function addSpecialNotice(s, html, cls, eventData){
+  const chat=document.getElementById('scchat-'+s);if(!chat)return;
+  const t=trackedStreamers[s];if(!t)return;
+  t.chatCount++;
+  const cnt=document.getElementById('sccnt-'+s);if(cnt)cnt.textContent=`(${t.chatCount})`;
+  if(eventData)recordEvent('streamer',s,eventData);
+  const st=sSettings[s]||{direction:'top'};
+  const item=document.createElement('div');
+  item.className=cls||'sub-msg';
+  item.innerHTML=`<span class="chat-ts">${fmtFull(new Date())}</span>${html}`;
+  if(st.direction==='top')chat.insertBefore(item,chat.firstChild);else chat.appendChild(item);
+}
+
+function updateModVipPanel(s){
+  const t=trackedStreamers[s];if(!t)return;
+  // Mods
+  const modsEl=document.getElementById('sc-mods-'+s);
+  const modPanel=document.getElementById('sc-mods-panel-'+s);
+  const modCnt=document.getElementById('sc-mods-cnt-'+s);
+  if(modsEl&&t.mods.size>0){
+    modPanel.style.display='block';
+    if(modCnt)modCnt.textContent=`(${t.mods.size})`;
+    modsEl.innerHTML=[...t.mods].map(m=>`<span class="mod-chip mod" onclick="window.open('https://twitch.tv/${esc(m)}','_blank')">🛡️ ${esc(m)}</span>`).join('');
+  }
+  // VIPs
+  const vipsEl=document.getElementById('sc-vips-'+s);
+  const vipPanel=document.getElementById('sc-vips-panel-'+s);
+  const vipCnt=document.getElementById('sc-vips-cnt-'+s);
+  if(vipsEl&&t.vips.size>0){
+    vipPanel.style.display='block';
+    if(vipCnt)vipCnt.textContent=`(${t.vips.size})`;
+    vipsEl.innerHTML=[...t.vips].map(v=>`<span class="mod-chip vip" onclick="window.open('https://twitch.tv/${esc(v)}','_blank')">💎 ${esc(v)}</span>`).join('');
+  }
+}
+
+function updateSharedPanel(s){
+  const t=trackedStreamers[s];if(!t||t.sharedChannels.size===0)return;
+  const panel=document.getElementById('sc-shared-panel-'+s);
+  const el=document.getElementById('sc-shared-'+s);
+  const cnt=document.getElementById('sc-shared-cnt-'+s);
+  if(!panel||!el)return;
+  panel.style.display='block';
+  if(cnt)cnt.textContent=`(${t.sharedChannels.size})`;
+  el.innerHTML=[...t.sharedChannels.keys()].map(ch=>
+    `<span class="mod-chip" style="background:#00bcd411;border-color:#00bcd433;color:#00bcd4" onclick="window.open('https://twitch.tv/${esc(ch)}','_blank')">🔗 ${esc(ch)}</span>`
+  ).join('');
+}
+
+function togglePause(s){
+  const st=sSettings[s];if(!st)return;
+  st.paused=!st.paused;
+  const btn=document.getElementById('scpause-'+s);
+  const chat=document.getElementById('scchat-'+s);
+  if(st.paused){
+    if(btn){btn.textContent='▶ '+st.queue.length;btn.classList.add('paused');}
+    if(chat)chat.style.opacity='0.6';
+  }else{
+    // Flush queue
+    st.queue.forEach(fn=>fn());
+    st.queue=[];
+    if(btn){btn.textContent='⏸';btn.classList.remove('paused');}
+    if(chat)chat.style.opacity='1';
+  }
+}
+
+function setSlowMode(s,v){
+  const st=sSettings[s];if(!st)return;
+  st.slowMode=parseInt(v)||0;
+  st.lastMsgTime=0;
+}
+
+function addStreamerChatMsg(s,user,text,isMod,isVip,sourceChannel){
+  const st=sSettings[s]||{direction:'top',filter:'',paused:false,slowMode:0,queue:[]};
+  // Slow mode
+  if(st.slowMode>0){
+    const now=Date.now();
+    const elapsed=now-(st.lastMsgTime||0);
+    if(elapsed<st.slowMode){
+      setTimeout(()=>addStreamerChatMsg(s,user,text,isMod,isVip,sourceChannel), st.slowMode-elapsed);
+      return;
+    }
+    st.lastMsgTime=now;
+  }
+  // Pause mode - queue messages
+  if(st.paused){
+    st.queue.push(()=>addStreamerChatMsg(s,user,text,isMod,isVip,sourceChannel));
+    const btn=document.getElementById('scpause-'+s);
+    if(btn)btn.textContent='▶ '+st.queue.length;
+    return;
+  }
+  const t=trackedStreamers[s];if(!t)return;
+  t.chatCount++;
+  const cnt=document.getElementById('sccnt-'+s);if(cnt)cnt.textContent=`(${t.chatCount})`;
+  const chat=document.getElementById('scchat-'+s);if(!chat)return;
+  // Record message in stats
+  recordEvent('streamer',s,{messages:1,viewers:t.stream?.viewer_count||0});
+  const item=document.createElement('div');item.className='chat-msg';item.dataset.user=user.toLowerCase();
+  const modBadge=isMod?'<span style="color:#00aa00;font-size:9px;margin-right:2px">🛡️</span>':'';
+  const vipBadge=isVip?'<span style="color:#e91e8c;font-size:9px;margin-right:2px">💎</span>':'';
+  const sharedBadge=sourceChannel?`<span class="shared-badge" title="Aus ${esc(sourceChannel)}'s Chat">🔗 ${esc(sourceChannel)}</span>`:'';
+  item.innerHTML=`<span class="chat-ts">${fmtFull(new Date())}</span>${modBadge}${vipBadge}${sharedBadge}<span class="chat-user" onclick="window.open('https://twitch.tv/${esc(user)}','_blank')">${esc(user)}</span>: <span>${esc(text)}</span>`;
+  if(st.filter){if(user.toLowerCase().includes(st.filter))item.classList.add('filter-match');else item.classList.add('filtered-out');}
+  if(st.direction==='top')chat.insertBefore(item,chat.firstChild);else chat.appendChild(item);
+  if(chat.children.length>200)st.direction==='top'?chat.removeChild(chat.lastChild):chat.removeChild(chat.firstChild);
+  const ul=user.toLowerCase();
+  if(trackedUsers[ul]){
+    addUserMsg(ul,s,text);
+    if(trackedUsers[ul].ws&&trackedUsers[ul].ws.readyState===1)trackedUsers[ul].ws.send(`JOIN #${s}`);
+  }
+  // Track shared channel
+  if(sourceChannel){
+    const t2=trackedStreamers[s];
+    if(t2&&!t2.sharedChannels.has(sourceChannel)){
+      t2.sharedChannels.set(sourceChannel,true);
+      updateSharedPanel(s);
+      addSpecialNotice(s,`🔗 Gemeinsamer Chat mit <b><a href="https://twitch.tv/${esc(sourceChannel)}" target="_blank" style="color:#00bcd4">${esc(sourceChannel)}</a></b> aktiv!`,'shared-notice');
+    }
+  }
+}
+
+function removeStreamer(s){
+  const t=trackedStreamers[s];
+  if(t){if(t.ws)try{t.ws.close()}catch(e){}clearInterval(t.pingInterval);delete trackedStreamers[s];}
+  delete sSettings[s];
+  const card=document.getElementById('sc-'+s);if(card)card.remove();
+  const grid=document.getElementById('sgrid');
+  if(!grid.children.length)grid.innerHTML='<div class="empty-g"><div class="big">📺</div><div>Gib einen Streamer-Namen ein</div></div>';
+}
+
+// ── AUTO REFRESH ──
+setInterval(()=>{Object.keys(trackedUsers).forEach(fetchUser);Object.keys(trackedStreamers).forEach(fetchStreamer);},60000);
+setInterval(()=>{
+  Object.keys(trackedUsers).forEach(u=>{
+    const t=trackedUsers[u];if(!t)return;
+    if(t.stream&&t.lastJoin){
+      const el=document.getElementById('udur-'+u);if(el)el.textContent=`⏱️ Im Stream seit: ${dur(t.stream.started_at)}`;
+      const tel=document.getElementById('utotal-'+u);if(tel)tel.textContent=`${t.totalTime+Math.floor((Date.now()-t.lastJoin)/60000)} min`;
+      // Update silent status
+      const sel=document.getElementById('usilent-'+u);
+      if(sel&&t.lastMsgTime)sel.innerHTML=`💬 Zuletzt geschrieben: <span style="color:#efeff1">${fmtFull(t.lastMsgTime)}</span> (${dur(t.lastMsgTime)} her)`;
+    }
+    // Update own stream duration
+    if(t.ownStream){const oel=document.getElementById('uowndur-'+u);if(oel)oel.textContent=`⏱️ Seit: ${dur(t.ownStream.started_at)}`;}
+  });
+  Object.keys(trackedStreamers).forEach(s=>{
+    const t=trackedStreamers[s];if(!t||!t.streamStart)return;
+    const el=document.getElementById('scdur-'+s);if(el)el.textContent=`⏱️ Live seit: ${dur(t.streamStart)}`;
+    // Viewers
+    if(t.stream){
+      const vel=document.getElementById('sc-viewers-v-'+s);
+      if(vel)vel.textContent=num(t.stream.viewer_count||0);
+      // Record viewer peak + live time + game every minute
+      if(Math.floor(Date.now()/60000)!==t._lastStatMin){
+        t._lastStatMin=Math.floor(Date.now()/60000);
+        recordEvent('streamer',s,{
+          viewers:t.stream.viewer_count||0,
+          live_mins:1,
+          game:t.stream.game_name||'–'
+        });
+      }
+    }
+    // Watch since - show start time + live duration
+    if(t.watchStartTime){
+      const wsel=document.getElementById('sc-watchsince-'+s);
+      if(wsel)wsel.innerHTML=`<span style="font-size:10px">${fmtT(t.watchStartTime)}</span><br><span style="color:#9146FF;font-size:12px">${dur(t.watchStartTime)}</span>`;
+    }
+  });
+},1000);
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const active=document.querySelector('.tab.active');
+    if(active&&active.textContent.includes('Streamer'))addStreamers();else addUsers();
+  }
+});
+
+// ── PROFILE MANAGER ──
+function getAllProfiles(){
+  try{return JSON.parse(localStorage.getItem('twitch_profiles')||'[]');}catch(e){return [];}
+}
+function saveProfiles(profiles){
+  localStorage.setItem('twitch_profiles',JSON.stringify(profiles));
+}
+
+function getCurrentSessionData(name){
+  return {
+    id:Date.now(),
+    name:name||'Session '+new Date().toLocaleString('de-DE'),
+    savedAt:new Date().toISOString(),
+    layout:document.getElementById('layoutSel').value,
+    activeTab:document.querySelector('.tab.active')?.textContent.includes('Streamer')?'streamers':'users',
+    users:Object.keys(trackedUsers),
+    streamers:Object.keys(trackedStreamers),
+    sSettings:Object.fromEntries(Object.entries(sSettings).map(([k,v])=>[k,{
+      direction:v.direction,filter:v.filter,fontSize:v.fontSize||12,height:v.height||200,slowMode:v.slowMode||0
+    }]))
+  };
+}
+
+function openProfileManager(){
+  renderProfileList();
+  document.getElementById('profileModal').style.display='flex';
+  document.getElementById('newProfileName').value='';
+  document.getElementById('newProfileName').focus();
+  const infoEl=document.getElementById('profileCurrentInfo');
+  if(infoEl)infoEl.innerHTML=`Aktuell aktiv: <b style="color:#efeff1">${Object.keys(trackedUsers).length} User, ${Object.keys(trackedStreamers).length} Streamer</b>`;
+  populateSlotSelects();
+}
+
+function populateSlotSelects(){
+  const profiles=getAllProfiles();
+  const slot1Val=localStorage.getItem('twitch_quickslot_1_name')||'';
+  const slot2Val=localStorage.getItem('twitch_quickslot_2_name')||'';
+  [1,2].forEach(n=>{
+    const sel=document.getElementById('slot'+n+'Select');
+    if(!sel)return;
+    sel.innerHTML=`<option value="">Slot ${n} – leer</option>`+
+      profiles.map(p=>`<option value="${esc(p.name)}" ${(n===1?slot1Val:slot2Val)===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  });
+}
+
+function assignSlot(n, profileName){
+  localStorage.setItem('twitch_quickslot_'+n+'_name', profileName);
+  // Update slot button label
+  const btn=document.getElementById('slot'+n+'-btn');
+  if(!btn)return;
+  if(profileName){
+    // Find and save that profile to slot
+    const profiles=getAllProfiles();
+    const p=profiles.find(x=>x.name===profileName);
+    if(p){
+      localStorage.setItem('twitch_quickslot_'+n, JSON.stringify(p));
+      btn.textContent=`📌 ${profileName}`;
+      btn.style.color='#9146FF';
+      btn.style.borderColor='#9146FF44';
+    }
+  } else {
+    localStorage.removeItem('twitch_quickslot_'+n);
+    btn.textContent=`📌 Slot ${n}`;
+    btn.style.color='';
+    btn.style.borderColor='';
+  }
+}
+function closeProfileManager(){
+  document.getElementById('profileModal').style.display='none';
+}
+
+function saveProfile(){
+  const name=document.getElementById('newProfileName').value.trim();
+  if(!name){alert('Bitte einen Namen eingeben!');return;}
+  const profiles=getAllProfiles();
+  // Check if name already exists
+  const existingIdx=profiles.findIndex(p=>p.name.toLowerCase()===name.toLowerCase());
+  if(existingIdx>=0){
+    if(!confirm(`Eine Session mit dem Namen "${name}" existiert bereits.\n\nÜberschreiben?`))return;
+    profiles[existingIdx]=getCurrentSessionData(name);
+  } else {
+    profiles.unshift(getCurrentSessionData(name));
+  }
+  saveProfiles(profiles);
+  renderProfileList();
+  document.getElementById('newProfileName').value='';
+  const btn=document.querySelector('.save-btn');
+  if(btn){const old=btn.textContent;btn.textContent='✅ Gespeichert!';setTimeout(()=>btn.textContent=old,2000);}
+}
+
+function renderProfileList(){
+  const profiles=getAllProfiles();
+  const list=document.getElementById('profileList');
+  if(!profiles.length){list.innerHTML='<div style="text-align:center;color:#555;padding:1rem;font-size:13px">Noch keine Sessions gespeichert</div>';return;}
+  // Also refresh slot selects if modal is open
+  if(document.getElementById('slot1Select'))populateSlotSelects();
+  list.innerHTML=profiles.map((p,i)=>`
+    <div class="profile-item" id="prof-${i}">
+      <div onclick="loadProfile(${i})" style="flex:1;display:flex;flex-direction:column;gap:2px;cursor:pointer">
+        <div class="profile-item-name">📋 ${esc(p.name)}</div>
+        <div class="profile-item-info">${p.users?.length||0} User · ${p.streamers?.length||0} Streamer · ${new Date(p.savedAt).toLocaleString('de-DE')}</div>
+      </div>
+      <div class="profile-item-actions">
+        <button class="btn bg bsm" onclick="overwriteProfile(${i})" title="Mit aktuellem Stand überschreiben" style="color:#FFA500">💾</button>
+        <button class="btn bg bsm" onclick="renameProfile(${i})" title="Umbenennen">✏️</button>
+        <button class="btn br bsm" onclick="deleteProfile(${i})" title="Löschen">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function loadProfile(i){
+  const profiles=getAllProfiles();
+  const p=profiles[i];if(!p)return;
+  closeProfileManager();
+  // No confirm needed - just load directly
+
+  // Clear current tracked
+  [...Object.keys(trackedUsers)].forEach(u=>removeUser(u));
+  [...Object.keys(trackedStreamers)].forEach(s=>removeStreamer(s));
+
+  // Reset grids to empty state
+  const ugrid=document.getElementById('ugrid');
+  const sgrid=document.getElementById('sgrid');
+  ugrid.innerHTML='<div class="empty-g"><div class="big">👤</div><div>Gib einen Username ein</div></div>';
+  sgrid.innerHTML='<div class="empty-g"><div class="big">📺</div><div>Gib einen Streamer-Namen ein</div></div>';
+
+  // Restore layout
+  if(p.layout){document.getElementById('layoutSel').value=p.layout;setLayout(p.layout);}
+  if(p.activeTab==='streamers')switchTab('streamers');else switchTab('users');
+
+  // Restore sSettings
+  if(p.sSettings){
+    Object.entries(p.sSettings).forEach(([k,v])=>{
+      sSettings[k]=Object.assign({direction:'top',filter:'',paused:false,slowMode:0,queue:[]},v);
+    });
+  }
+
+  // Small delay so DOM is ready
+  setTimeout(()=>{
+    restoreCardSizes();
+    // Restore users
+    if(p.users?.length){
+      const empty=ugrid.querySelector('.empty-g');if(empty)empty.remove();
+      p.users.forEach(u=>{
+        if(trackedUsers[u])return;
+        trackedUsers[u]={name:u,stream:null,lastJoin:null,totalTime:0,timeline:[],ws:null,pingInterval:null,firstSeen:new Date(),twitchCreated:null,currentStreamChannel:null,pendingChannel:null,scanning:false,scanInterval:null};
+        createUserCard(u);fetchUser(u);
+      });
+    }
+    // Restore streamers
+    if(p.streamers?.length){
+      const empty=sgrid.querySelector('.empty-g');if(empty)empty.remove();
+      p.streamers.forEach(s=>{
+        if(trackedStreamers[s])return;
+        if(!sSettings[s])sSettings[s]={direction:'top',filter:'',paused:false,slowMode:0,queue:[]};
+        trackedStreamers[s]={name:s,ws:null,pingInterval:null,chatCount:0,streamStart:null,subCount:0,resubCount:0,giftCount:0,bitsTotal:0,followCount:0,mods:new Set(),vips:new Set(),sharedChannels:new Map()};
+        createStreamerCard(s);fetchStreamer(s);
+      });
+    }
+  },100);
+}
+
+function renameProfile(i){
+  const profiles=getAllProfiles();
+  const p=profiles[i];if(!p)return;
+  const newName=prompt('Neuer Name:',p.name);
+  if(!newName||!newName.trim())return;
+  profiles[i].name=newName.trim();
+  saveProfiles(profiles);
+  renderProfileList();
+}
+
+function overwriteProfile(i){
+  const profiles=getAllProfiles();
+  const p=profiles[i];if(!p)return;
+  if(!confirm(`Session "${p.name}" mit dem aktuellen Stand überschreiben?`))return;
+  profiles[i]=getCurrentSessionData(p.name);
+  saveProfiles(profiles);
+  renderProfileList();
+  // feedback
+  const btn=document.querySelector('.save-btn');
+  if(btn){const old=btn.textContent;btn.textContent='✅ Überschrieben!';setTimeout(()=>btn.textContent=old,2000);}
+}
+
+function deleteProfile(i){
+  if(!confirm('Session löschen?'))return;
+  const profiles=getAllProfiles();
+  profiles.splice(i,1);
+  saveProfiles(profiles);
+  renderProfileList();
+}
+
+
+
+// ── QUICK SAVE SLOTS ──
+function initQuickSlots(){
+  [1,2].forEach(n=>{
+    const btn=document.getElementById('slot'+n+'-btn');
+    if(!btn)return;
+    const saved=localStorage.getItem('twitch_quickslot_'+n);
+    if(saved){
+      try{
+        const p=JSON.parse(saved);
+        btn.textContent=`📌 ${p.name||'Slot '+n}`;
+        btn.title=`Klick = Laden "${p.name}" | Shift+Klick = Überschreiben`;
+        btn.style.borderColor='#9146FF44';btn.style.color='#9146FF';
+      }catch(e){}
+    } else {
+      btn.title='Shift+Klick = Hier speichern';
+    }
+    btn.addEventListener('click',ev=>quickSaveLoad(n,ev.shiftKey));
+  });
+}
+
+function quickSaveLoad(n, isShift=false){
+  const key='twitch_quickslot_'+n;
+  if(isShift){
+    // Save - check if slot already has data
+    const existing=localStorage.getItem(key);
+    let name='Slot '+n;
+    if(existing){
+      try{const ep=JSON.parse(existing);name=ep.name||name;}catch(e){}
+      if(!confirm(`Slot ${n} ("${name}") überschreiben?`))return;
+    } else {
+      const newName=prompt('Name für Slot '+n+':','Slot '+n);
+      if(!newName)return;
+      name=newName;
+    }
+    const data=getCurrentSessionData(name);
+    localStorage.setItem(key,JSON.stringify(data));
+    const btn=document.getElementById('slot'+n+'-btn');
+    if(btn){btn.textContent=`📌 ${name}`;btn.style.borderColor='#9146FF44';btn.style.color='#9146FF';}
+    alert(`✅ In Slot ${n} gespeichert!`);
+  } else {
+    // Load
+    const raw=localStorage.getItem(key);
+    if(!raw){
+      const btn=document.getElementById('slot'+n+'-btn');
+      if(btn){const old=btn.textContent;btn.textContent='⚠️ Leer!';btn.style.color='#FFA500';setTimeout(()=>{btn.textContent=old;btn.style.color='';},2000);}
+      return;
+    }
+    try{
+      const p=JSON.parse(raw);
+      // Load - reuse loadProfile logic
+      const profiles=getAllProfiles();
+      const tempIdx=profiles.findIndex(x=>x.name===p.name);
+      if(tempIdx>=0){loadProfile(tempIdx);}
+      else{
+        // not in profiles list, load directly
+        [...Object.keys(trackedUsers)].forEach(u=>removeUser(u));
+        [...Object.keys(trackedStreamers)].forEach(s=>removeStreamer(s));
+        document.getElementById('ugrid').innerHTML='<div class="empty-g"><div class="big">👤</div><div>Gib einen Username ein</div></div>';
+        document.getElementById('sgrid').innerHTML='<div class="empty-g"><div class="big">📺</div><div>Gib einen Streamer-Namen ein</div></div>';
+        if(p.layout){document.getElementById('layoutSel').value=p.layout;setLayout(p.layout);}
+        if(p.activeTab==='streamers')switchTab('streamers');else switchTab('users');
+        if(p.sSettings){Object.entries(p.sSettings).forEach(([k,v])=>{sSettings[k]=Object.assign({direction:'top',filter:'',paused:false,slowMode:0,queue:[]},v);});}
+        setTimeout(()=>{
+          if(p.users?.length){
+            const g=document.getElementById('ugrid');const e=g.querySelector('.empty-g');if(e)e.remove();
+            p.users.forEach(u=>{
+              if(trackedUsers[u])return;
+              trackedUsers[u]={name:u,stream:null,lastJoin:null,totalTime:0,timeline:[],ws:null,pingInterval:null,firstSeen:new Date(),twitchCreated:null,currentStreamChannel:null,pendingChannel:null,scanning:false,scanInterval:null};
+              createUserCard(u);fetchUser(u);
+            });
+          }
+          if(p.streamers?.length){
+            const g=document.getElementById('sgrid');const e=g.querySelector('.empty-g');if(e)e.remove();
+            p.streamers.forEach(s=>{
+              if(trackedStreamers[s])return;
+              if(!sSettings[s])sSettings[s]={direction:'top',filter:'',paused:false,slowMode:0,queue:[]};
+              trackedStreamers[s]={name:s,ws:null,pingInterval:null,chatCount:0,streamStart:null,subCount:0,resubCount:0,giftCount:0,bitsTotal:0,followCount:0,mods:new Set(),vips:new Set(),sharedChannels:new Map()};
+              createStreamerCard(s);fetchStreamer(s);
+            });
+          }
+        },100);
+      }
+    }catch(e){alert('Fehler beim Laden!');}
+  }
+}
+
+// ── THEME ──
+const themeNames={dark:'🌙 Dunkel',light:'☀️ Hell',purple:'💜 Lila',blue:'💙 Blau',green:'💚 Grün',red:'❤️ Rot'};
+function setTheme(name){
+  document.body.className=document.body.className.replace(/theme-\S+|light|dark/g,'').trim();
+  if(name==='light')document.body.classList.add('light');
+  else if(name!=='dark')document.body.classList.add('theme-'+name);
+  localStorage.setItem('twitch_theme',name);
+  const btn=document.getElementById('themeBtn');
+  if(btn)btn.textContent=themeNames[name]||'🌙 Dunkel';
+  // highlight active color dot
+  ['dark','light','purple','blue','green','red'].forEach(t=>{
+    const el=document.getElementById('color-'+t);
+    if(el)el.style.outline=t===name?'2px solid #9146FF':'none';
+  });
+}
+function toggleTheme(){
+  const saved=localStorage.getItem('twitch_theme')||'dark';
+  setTheme(saved==='dark'?'light':'dark');
+}
+function initTheme(){
+  const saved=localStorage.getItem('twitch_theme')||'dark';
+  setTheme(saved);
+}
+initTheme();
+
+initSpyWS();
+initFirebase();
+
+// ── FOLLOWS / TWITCH LOGIN ──
+let followsToken=null;
+let followsUser=null;
+let followsList=[];
+let liveOnlyMode=false;
+
+function loginWithTwitch(){
+  // Use manual token entry approach - most reliable for local HTML files
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`<div style="background:var(--card);border:1px solid #9146FF;border-radius:14px;padding:1.5rem;max-width:480px;width:90%">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:1rem;color:#9146FF">🟣 Twitch Login</h2>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">
+      <b>Schritt 1:</b> Klick auf den Button um einen Token zu generieren:<br>
+      <a href="https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=https%3A%2F%2Flocalhost&response_type=token&scope=user%3Aread%3Afollows+user%3Aread%3Aemail+chat%3Aread" 
+         target="_blank" 
+         style="display:inline-block;margin-top:8px;background:#9146FF;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600">
+        🔗 Twitch autorisieren →
+      </a>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:.8rem">
+      <b>Schritt 2:</b> Du siehst "Seite nicht gefunden" – das ist normal!<br>
+      Kopiere aus der Adresszeile den Teil nach <code style="background:var(--sub-bg);padding:1px 4px;border-radius:3px">access_token=</code> bis zum nächsten <code style="background:var(--sub-bg);padding:1px 4px;border-radius:3px">&</code>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:.5rem"><b>Schritt 3:</b> Token hier einfügen:</div>
+    <div style="display:flex;gap:6px;margin-bottom:.8rem">
+      <input type="password" id="followsTokenInput" placeholder="Token einfügen..." 
+             style="flex:1;background:var(--sub-bg);border:1px solid var(--input-border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;outline:none">
+      <button onclick="submitFollowsToken()" style="background:#9146FF;color:white;border:none;border-radius:7px;padding:0 14px;cursor:pointer;font-weight:600">✅ Login</button>
+    </div>
+    <button onclick="this.closest('div[style]').remove()" style="background:var(--input-border);color:var(--text);border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;width:100%">Abbrechen</button>
+  </div>`;
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('followsTokenInput')?.focus(),100);
+}
+
+function submitFollowsToken(){
+  const input=document.getElementById('followsTokenInput');
+  if(!input)return;
+  let token=input.value.trim();
+  if(token.includes('access_token=')){
+    token=token.match(/access_token=([^&]+)/)?.[1]||token;
+  }
+  if(!token){alert('Bitte Token eingeben!');return;}
+  followsToken=token;
+  localStorage.setItem('twitch_follows_token',token);
+  // Close ALL login modals
+  document.querySelectorAll('div[style*="position:fixed"][style*="z-index:99999"]').forEach(el=>el.remove());
+  fetchFollowsUser();
+}
+
+function logoutTwitch(){
+  followsToken=null;followsUser=null;followsList=[];
+  localStorage.removeItem('twitch_follows_token');
+  document.getElementById('follows-not-logged').style.display='flex';
+  document.getElementById('follows-logged').style.display='none';
+  document.getElementById('follows-filter-bar').style.display='none';
+  document.getElementById('follows-grid').innerHTML='';
+}
+
+async function initFollowsTab(){
+  const saved=localStorage.getItem('twitch_follows_token');
+  if(saved){followsToken=saved;await fetchFollowsUser();}
+}
+
+async function fetchFollowsUser(){
+  if(!followsToken)return;
+  try{
+    const r=await fetch('https://api.twitch.tv/helix/users',{headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+followsToken}});
+    const d=await r.json();
+    if(d.data&&d.data[0]){
+      followsUser=d.data[0];
+      document.getElementById('follows-not-logged').style.display='none';
+      const loggedEl=document.getElementById('follows-logged');
+      loggedEl.style.display='flex';
+      const av=document.getElementById('follows-avatar');
+      if(av)av.src=followsUser.profile_image_url||'';
+      const un=document.getElementById('follows-username');
+      if(un)un.textContent=followsUser.display_name;
+      document.getElementById('follows-filter-bar').style.display='flex';
+      loadFollows();
+    }
+  }catch(e){console.error(e);}
+}
+
+async function loadFollows(){
+  if(!followsToken||!followsUser)return;
+  const grid=document.getElementById('follows-grid');
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted)"><span class="spinner"></span>Lade Follows...</div>';
+  followsList=[];
+  try{
+    let cursor='';
+    do{
+      const url=`https://api.twitch.tv/helix/channels/followed?user_id=${followsUser.id}&first=100`+(cursor?`&after=${cursor}`:'');
+      const r=await fetch(url,{headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+followsToken}});
+      const d=await r.json();
+      if(d.data)followsList=[...followsList,...d.data];
+      cursor=d.pagination?.cursor||'';
+      const cnt=document.getElementById('follows-count');
+      if(cnt)cnt.textContent=`${followsList.length} Follows`;
+    }while(cursor);
+    // Now fetch live status
+    await fetchLiveStatus();
+  }catch(e){
+    grid.innerHTML=`<div style="grid-column:1/-1;color:#eb0400;padding:1rem">Fehler: ${e.message}</div>`;
+  }
+}
+
+async function fetchLiveStatus(){
+  if(!followsList.length)return;
+  // Batch fetch stream status
+  const batches=[];
+  for(let i=0;i<followsList.length;i+=100)batches.push(followsList.slice(i,i+100));
+  const liveMap={};
+  for(const batch of batches){
+    const ids=batch.map(f=>f.broadcaster_id);
+    const q=ids.map(id=>`user_id=${id}`).join('&');
+    try{
+      const r=await fetch(`https://api.twitch.tv/helix/streams?${q}&first=100`,{headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+followsToken}});
+      const d=await r.json();
+      if(d.data)d.data.forEach(s=>liveMap[s.user_id]=s);
+    }catch(e){}
+  }
+  // Merge live status into followsList
+  followsList.forEach(f=>{f.liveData=liveMap[f.broadcaster_id]||null;});
+  followsList.sort((a,b)=>(b.liveData?1:0)-(a.liveData?1:0));
+  const liveCount=followsList.filter(f=>f.liveData).length;
+  const cnt=document.getElementById('follows-count');
+  if(cnt)cnt.textContent=`${followsList.length} Follows · 🔴 ${liveCount} live`;
+  const lc=document.getElementById('follows-live-count');
+  if(lc)lc.textContent=`${liveCount} gerade live`;
+  renderFollowsGrid(followsList);
+  // Fetch last stream dates for offline channels in background
+  fetchLastStreamDates();
+}
+
+async function fetchLastStreamDates(){
+  const offline=followsList.filter(f=>!f.liveData&&!f.lastStreamDate);
+  // Fetch in batches of 10 to avoid rate limits
+  for(let i=0;i<Math.min(offline.length,50);i+=5){
+    const batch=offline.slice(i,i+5);
+    await Promise.all(batch.map(async f=>{
+      try{
+        const r=await fetch(`https://api.twitch.tv/helix/videos?user_id=${f.broadcaster_id}&type=archive&first=1`,
+          {headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+followsToken}});
+        const d=await r.json();
+        if(d.data&&d.data[0]){
+          f.lastStreamDate=d.data[0].created_at;
+          f.lastStreamGame=d.data[0].title||'';
+          // Update the card if it exists
+          updateFollowCardDate(f);
+        }
+      }catch(e){}
+    }));
+    await new Promise(r=>setTimeout(r,200));
+  }
+}
+
+function updateFollowCardDate(f){
+  const card=document.getElementById('fcard-'+f.broadcaster_id);
+  if(!card)return;
+  const dateEl=card.querySelector('.last-stream-date');
+  if(dateEl&&f.lastStreamDate){
+    dateEl.textContent=`📅 Zuletzt live: ${fmt(f.lastStreamDate)}`;
+    dateEl.style.display='block';
+  }
+}
+
+function renderFollowsGrid(list){
+  const grid=document.getElementById('follows-grid');
+  if(!list.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted)">Keine Follows gefunden</div>';return;}
+  grid.innerHTML=list.map(f=>{
+    const live=f.liveData;
+    const isLive=!!live;
+    const viewers=live?`<span class="follow-card-viewers">👥 ${num(live.viewer_count)}</span>`:'<span style="font-size:10px;color:var(--muted2)">Offline</span>';
+    const game=live?`<div class="follow-card-game">🎮 ${esc(live.game_name||'–')}</div>`:`<div class="follow-card-game" style="color:var(--muted2)">Offline</div>`;
+    const liveTag=isLive?'<span class="live-dot"></span>':'';
+    const alreadyTrackingStreamer=!!trackedStreamers[f.broadcaster_login];
+    const alreadyTrackingUser=!!trackedUsers[f.broadcaster_login];
+    const lastStreamHtml=!isLive&&f.lastStreamDate
+      ?`<div class="last-stream-date" style="font-size:10px;color:var(--muted2);margin-top:3px">📅 Zuletzt live: ${fmt(f.lastStreamDate)}</div>`
+      :`<div class="last-stream-date" style="font-size:10px;color:var(--muted2);margin-top:3px;display:none"></div>`;
+    const liveInfo=isLive?`
+      <div class="follow-card-game">💬 ${esc((live.title||'').substring(0,50))}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">⏱️ Live seit: ${dur(live.started_at)}</div>`:'';
+    return `<div class="follow-card ${isLive?'is-live':'is-offline'}" id="fcard-${f.broadcaster_id}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        ${liveTag}
+        <a href="https://twitch.tv/${f.broadcaster_login}" target="_blank" class="follow-card-name">${esc(f.broadcaster_name)}</a>
+        ${isLive?'<span class="badge live" style="font-size:9px">LIVE</span>':''}
+      </div>
+      ${game}
+      ${liveInfo}
+      <div style="margin-top:3px">${viewers}</div>
+      ${lastStreamHtml}
+      <div class="follow-card-actions">
+        <button class="btn bp bsm" onclick="trackFollowStreamer('${f.broadcaster_login}')" ${alreadyTrackingStreamer?'style="opacity:.5"':''}>
+          ${alreadyTrackingStreamer?'✅ Streamer':'📺 Streamer'}
+        </button>
+        <button class="btn bg bsm" onclick="trackFollowUser('${f.broadcaster_login}')" ${alreadyTrackingUser?'style="opacity:.5"':''}>
+          ${alreadyTrackingUser?'✅ Verfolgt':'👀 Verfolgen'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterFollows(q){
+  const lower=q.toLowerCase();
+  const filtered=followsList.filter(f=>
+    (!lower||f.broadcaster_name.toLowerCase().includes(lower)||f.broadcaster_login.toLowerCase().includes(lower))&&
+    (!liveOnlyMode||f.liveData)
+  );
+  renderFollowsGrid(filtered);
+}
+
+function toggleLiveOnly(){
+  liveOnlyMode=!liveOnlyMode;
+  const btn=document.getElementById('follows-live-only');
+  if(btn)btn.classList.toggle('on',liveOnlyMode);
+  filterFollows(document.getElementById('followsSearch')?.value||'');
+}
+
+function trackFollowStreamer(login){
+  switchTab('streamers');
+  // Add to streamer tab
+  const grid=document.getElementById('sgrid');
+  const empty=grid.querySelector('.empty-g');if(empty)empty.remove();
+  if(!trackedStreamers[login]){
+    if(!sSettings[login])sSettings[login]={direction:'top',filter:'',paused:false,slowMode:0,queue:[]};
+    trackedStreamers[login]={name:login,ws:null,pingInterval:null,chatCount:0,streamStart:null,subCount:0,resubCount:0,giftCount:0,bitsTotal:0,followCount:0,mods:new Set(),vips:new Set(),sharedChannels:new Map()};
+    createStreamerCard(login);fetchStreamer(login);
+  }
+}
+
+function trackFollowUser(login){
+  switchTab('users');
+  const grid=document.getElementById('ugrid');
+  const empty=grid.querySelector('.empty-g');if(empty)empty.remove();
+  if(!trackedUsers[login]){
+    trackedUsers[login]={name:login,stream:null,lastJoin:null,totalTime:0,timeline:[],ws:null,pingInterval:null,firstSeen:new Date(),twitchCreated:null,currentStreamChannel:null,pendingChannel:null,scanning:false,scanInterval:null};
+    createUserCard(login);fetchUser(login);
+  }
+}
+
+function trackAllLive(){
+  const live=followsList.filter(f=>f.liveData);
+  if(!live.length){alert('Keine Live-Streams gefunden!');return;}
+  switchTab('streamers');
+  live.forEach(f=>trackFollowStreamer(f.broadcaster_login));
+}
+
+// ── FIREBASE SYNC ──
+const firebaseConfig = {
+  apiKey: "AIzaSyBZ5IKUycKrESWv5zJ8T6IoDYYMNedC_Dg",
+  authDomain: "twitch-tracker-6194e.firebaseapp.com",
+  projectId: "twitch-tracker-6194e",
+  storageBucket: "twitch-tracker-6194e.firebasestorage.app",
+  messagingSenderId: "569307864267",
+  appId: "1:569307864267:web:65470b4e6eb9aa3e7c4f4e"
+};
+
+let fbApp=null, fbDb=null, fbAuth=null, fbUser=null;
+
+function initFirebase(){
+  try{
+    fbApp=firebase.initializeApp(firebaseConfig);
+    fbDb=firebase.firestore();
+    fbAuth=firebase.auth();
+    fbAuth.onAuthStateChanged(user=>{
+      fbUser=user;
+      updateSyncStatus();
+    });
+  }catch(e){console.error('Firebase init error:',e);}
+}
+
+function updateSyncStatus(){
+  const statusEl=document.getElementById('sync-status');
+  if(fbUser){
+    if(statusEl){statusEl.textContent='☁️ Verbunden';statusEl.style.color='#00c853';}
+    document.getElementById('sync-not-logged').style.display='none';
+    document.getElementById('sync-logged').style.display='block';
+    const av=document.getElementById('sync-avatar');if(av)av.src=fbUser.photoURL||'';
+    const em=document.getElementById('sync-email');if(em)em.textContent=fbUser.displayName||fbUser.email;
+  } else {
+    if(statusEl){statusEl.textContent='☁️ Sync';statusEl.style.color='var(--muted)';}
+    document.getElementById('sync-not-logged').style.display='block';
+    document.getElementById('sync-logged').style.display='none';
+  }
+}
+
+function openSyncModal(){
+  document.getElementById('syncModal').style.display='flex';
+}
+function closeSyncModal(){
+  document.getElementById('syncModal').style.display='none';
+}
+
+async function syncLogin(){
+  if(!fbAuth)return;
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    await fbAuth.signInWithPopup(provider);
+    setSyncLog('✅ Eingeloggt!');
+  }catch(e){setSyncLog('❌ Login fehlgeschlagen: '+e.message);}
+}
+
+async function syncLogout(){
+  if(!fbAuth)return;
+  await fbAuth.signOut();
+  setSyncLog('Abgemeldet');
+}
+
+async function syncUpload(){
+  if(!fbUser||!fbDb){setSyncLog('❌ Nicht eingeloggt!');return;}
+  setSyncLog('<span class="spinner"></span>Lade hoch...');
+  try{
+    const uid=fbUser.uid;
+    const data={
+      stats:getStats(),
+      profiles:getAllProfiles(),
+      favs_users:JSON.parse(localStorage.getItem('twitch_favs_users')||'[]'),
+      favs_streamers:JSON.parse(localStorage.getItem('twitch_favs_streamers')||'[]'),
+      theme:localStorage.getItem('twitch_theme')||'dark',
+      layout:document.getElementById('layoutSel')?.value||'layout-auto',
+      uploadedAt:new Date().toISOString(),
+      device:navigator.userAgent.includes('Mobile')?'📱 Handy':'💻 PC'
+    };
+    // Firestore has 1MB limit per doc, split stats if needed
+    await fbDb.collection('users').doc(uid).set({
+      meta:{uploadedAt:data.uploadedAt,device:data.device},
+      profiles:data.profiles,
+      favs_users:data.favs_users,
+      favs_streamers:data.favs_streamers,
+      theme:data.theme,
+      layout:data.layout
+    });
+    // Save stats in separate doc (can be large)
+    const statsStr=JSON.stringify(data.stats);
+    if(statsStr.length<900000){
+      await fbDb.collection('users').doc(uid).collection('data').doc('stats').set({stats:data.stats});
+    } else {
+      setSyncLog('⚠️ Statistiken zu groß für Cloud (>900KB). Andere Daten gespeichert.');
+      return;
+    }
+    setSyncLog(`✅ Hochgeladen! (${data.device} · ${new Date().toLocaleTimeString('de-DE')})`);
+    const lastEl=document.getElementById('sync-last');
+    if(lastEl)lastEl.textContent=`Zuletzt: ${fmt(data.uploadedAt)} (${data.device})`;
+  }catch(e){setSyncLog('❌ Fehler: '+e.message);}
+}
+
+async function syncDownload(){
+  if(!fbUser||!fbDb){setSyncLog('❌ Nicht eingeloggt!');return;}
+  setSyncLog('<span class="spinner"></span>Lade herunter...');
+  try{
+    const uid=fbUser.uid;
+    const doc=await fbDb.collection('users').doc(uid).get();
+    if(!doc.exists){setSyncLog('❌ Keine Cloud-Daten gefunden. Zuerst hochladen!');return;}
+    const d=doc.data();
+    // Restore profiles
+    if(d.profiles)localStorage.setItem('twitch_profiles',JSON.stringify(d.profiles));
+    // Restore favs
+    if(d.favs_users)localStorage.setItem('twitch_favs_users',JSON.stringify(d.favs_users));
+    if(d.favs_streamers)localStorage.setItem('twitch_favs_streamers',JSON.stringify(d.favs_streamers));
+    // Restore theme
+    if(d.theme)setTheme(d.theme);
+    // Restore layout
+    if(d.layout){document.getElementById('layoutSel').value=d.layout;setLayout(d.layout);}
+    // Load stats
+    const statsDoc=await fbDb.collection('users').doc(uid).collection('data').doc('stats').get();
+    if(statsDoc.exists&&statsDoc.data().stats){
+      saveStats(statsDoc.data().stats);
+    }
+    // Reload UI
+    loadFavs();
+    renderStats();
+    setSyncLog(`✅ Heruntergeladen! (Gespeichert: ${fmt(d.meta?.uploadedAt)} von ${d.meta?.device||'?'})`);
+  }catch(e){setSyncLog('❌ Fehler: '+e.message);}
+}
+
+function setSyncLog(msg){
+  const el=document.getElementById('sync-log');
+  if(el)el.innerHTML=msg;
+}
+
+// ── STATS EXPORT/IMPORT ──
+function exportStats(format){
+  const stats=getStats();
+  if(!Object.keys(stats).length){alert('Keine Statistiken zum Exportieren!');return;}
+
+  if(format==='json'){
+    const blob=new Blob([JSON.stringify(stats,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`twitch-stats-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+  } else if(format==='csv'){
+    // Flatten stats to CSV
+    const rows=[['Datum','Kanal','Typ','Subs','Resubs','Gifts','Bits','Nachrichten','Follower','Live Min','Zuschauer Peak']];
+    Object.entries(stats).forEach(([date,channels])=>{
+      Object.entries(channels).forEach(([name,v])=>{
+        rows.push([
+          date, name, v.type||'',
+          v.subs||0, v.resubs||0, v.gifts||0,
+          v.bits||0, v.messages||0, v.follows||0,
+          v.live_mins||0, v.viewers_peak||0
+        ]);
+      });
+    });
+    const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`twitch-stats-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  }
+}
+
+function importStats(){
+  document.getElementById('importFileInput').click();
+}
+
+function handleImport(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const imported=JSON.parse(e.target.result);
+      const existing=getStats();
+      // Merge imported with existing
+      let merged=0;
+      Object.entries(imported).forEach(([date,channels])=>{
+        if(!existing[date])existing[date]={};
+        Object.entries(channels).forEach(([name,data])=>{
+          if(!existing[date][name]){
+            existing[date][name]=data;
+          } else {
+            // Merge numbers
+            const ex=existing[date][name];
+            ex.subs=(ex.subs||0)+(data.subs||0);
+            ex.resubs=(ex.resubs||0)+(data.resubs||0);
+            ex.gifts=(ex.gifts||0)+(data.gifts||0);
+            ex.bits=(ex.bits||0)+(data.bits||0);
+            ex.messages=(ex.messages||0)+(data.messages||0);
+            ex.follows=(ex.follows||0)+(data.follows||0);
+            ex.live_mins=(ex.live_mins||0)+(data.live_mins||0);
+            ex.watch_mins=(ex.watch_mins||0)+(data.watch_mins||0);
+            if((data.viewers_peak||0)>ex.viewers_peak)ex.viewers_peak=data.viewers_peak;
+            // Merge games
+            if(data.games)Object.entries(data.games).forEach(([g,c])=>{ex.games=ex.games||{};ex.games[g]=(ex.games[g]||0)+c;});
+            // Merge top supporters
+            if(data.top_subbers)Object.entries(data.top_subbers).forEach(([u,c])=>{ex.top_subbers=ex.top_subbers||{};ex.top_subbers[u]=(ex.top_subbers[u]||0)+c;});
+            if(data.top_gifters)Object.entries(data.top_gifters).forEach(([u,c])=>{ex.top_gifters=ex.top_gifters||{};ex.top_gifters[u]=(ex.top_gifters[u]||0)+c;});
+            if(data.top_bits)Object.entries(data.top_bits).forEach(([u,c])=>{ex.top_bits=ex.top_bits||{};ex.top_bits[u]=(ex.top_bits[u]||0)+c;});
+          }
+          merged++;
+        });
+      });
+      saveStats(existing);
+      renderStats();
+      alert(`✅ Import erfolgreich! ${merged} Einträge zusammengeführt.`);
+    }catch(err){
+      alert('❌ Fehler beim Import: Ungültige JSON-Datei');
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+loadFavs();
+initQuickSlots();
+restoreCardSizes();
+
+</script>
+</body>
+</html>
