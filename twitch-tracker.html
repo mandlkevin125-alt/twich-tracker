@@ -2287,6 +2287,17 @@ function initFirebase(){
       fbUser=user;
       updateSyncStatus();
     });
+    // Handle redirect result (mobile login)
+    fbAuth.getRedirectResult().then(result=>{
+      if(result&&result.user){
+        setSyncLog('✅ Eingeloggt!');
+        // Auto-open sync modal after mobile login
+        setTimeout(()=>openSyncModal(),500);
+      }
+    }).catch(e=>{
+      if(e.code!=='auth/no-current-user')
+        console.error('Redirect result error:',e);
+    });
   }catch(e){console.error('Firebase init error:',e);}
 }
 
@@ -2313,12 +2324,24 @@ function closeSyncModal(){
 }
 
 async function syncLogin(){
-  if(!fbAuth)return;
+  if(!fbAuth){setSyncLog('❌ Firebase nicht geladen!');return;}
+  setSyncLog('<span class="spinner"></span>Verbinde...');
   try{
     const provider=new firebase.auth.GoogleAuthProvider();
-    await fbAuth.signInWithPopup(provider);
-    setSyncLog('✅ Eingeloggt!');
-  }catch(e){setSyncLog('❌ Login fehlgeschlagen: '+e.message);}
+    provider.addScope('email');
+    provider.addScope('profile');
+    // Try popup first, fallback to redirect
+    try{
+      const result=await fbAuth.signInWithPopup(provider);
+      if(result.user){setSyncLog('✅ Eingeloggt als '+result.user.displayName);}
+    }catch(popupErr){
+      // Popup blocked or failed - use redirect
+      setSyncLog('<span class="spinner"></span>Weiterleitung zu Google...');
+      await fbAuth.signInWithRedirect(provider);
+    }
+  }catch(e){
+    setSyncLog('❌ Fehler: '+e.message+'<br><small>Code: '+e.code+'</small>');
+  }
 }
 
 async function syncLogout(){
