@@ -296,34 +296,35 @@ select:focus{border-color:#9146FF}
   </div>
 
   <!-- SYNC MODAL -->
-  <div id="syncModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:9999;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)closeSyncModal()">
+  <div id="syncModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)closeSyncModal()">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;max-width:420px;width:90%">
       <h2 style="font-size:16px;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
-        ☁️ Cloud Sync
+        ☁️ Statistik Sync
         <span style="cursor:pointer;color:var(--muted2)" onclick="closeSyncModal()">✕</span>
       </h2>
       <div id="sync-not-logged" style="display:block">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Mit Google einloggen um Daten zwischen PC und Handy zu synchronisieren.</p>
-        <button class="btn bp" onclick="syncLogin()" style="width:100%;margin-bottom:.5rem">🔵 Mit Google einloggen</button>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:.8rem">Mit Google einloggen um die <b>Statistiken</b> zwischen PC und Handy automatisch zu synchronisieren.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:6px">
+          📊 Subs, Bits, Follower, Zeiten werden zusammengezählt – egal ob du auf PC oder Handy schaust!
+        </p>
+        <button class="btn bp" onclick="syncLogin()" style="width:100%">🔵 Mit Google einloggen</button>
       </div>
       <div id="sync-logged" style="display:none">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:8px">
           <img id="sync-avatar" src="" style="width:32px;height:32px;border-radius:50%">
           <div>
-            <div id="sync-email" style="font-size:13px;font-weight:600"></div>
+            <div id="sync-email" style="font-size:13px;font-weight:600;color:var(--text)"></div>
             <div id="sync-last" style="font-size:10px;color:var(--muted)"></div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">
-          <button class="btn bp" onclick="syncUpload()">⬆️ Hochladen</button>
-          <button class="btn bg" onclick="syncDownload()">⬇️ Herunterladen</button>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:.8rem">
+          🔄 Statistiken werden <b>automatisch</b> alle 5 Minuten synchronisiert
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:6px">
-          💡 <b>Hochladen</b> = Deine aktuellen Daten in die Cloud speichern<br>
-          💡 <b>Herunterladen</b> = Cloud-Daten auf dieses Gerät laden
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.8rem">
+          <button class="btn bp" onclick="syncStatsNow()">🔄 Jetzt syncen</button>
+          <button class="btn br bsm" onclick="syncLogout()" style="height:36px">Abmelden</button>
         </div>
-        <div id="sync-log" style="font-size:11px;color:var(--muted);min-height:20px"></div>
-        <button class="btn br bsm" onclick="syncLogout()" style="margin-top:8px;width:100%">Abmelden</button>
+        <div id="sync-log" style="font-size:11px;color:var(--muted);min-height:20px;padding:6px;background:var(--sub-bg);border-radius:6px"></div>
       </div>
     </div>
   </div>
@@ -395,6 +396,11 @@ function getStats(){
 function saveStats(s){localStorage.setItem('twitch_stats',JSON.stringify(s));}
 
 function recordEvent(type, name, data){
+  // Trigger sync after 30s if logged in
+  if(fbUser){
+    clearTimeout(recordEvent._syncTimer);
+    recordEvent._syncTimer=setTimeout(syncStatsNow,30000);
+  }
   const stats=getStats();
   const date=new Date().toISOString().split('T')[0];
   if(!stats[date])stats[date]={};
@@ -2465,7 +2471,8 @@ const firebaseConfig = {
   appId: "1:569307864267:web:65470b4e6eb9aa3e7c4f4e"
 };
 
-let fbApp=null, fbDb=null, fbAuth=null, fbUser=null;
+let fbApp=null,fbDb=null,fbAuth=null,fbUser=null;
+let autoSyncInterval=null;
 
 function initFirebase(){
   try{
@@ -2475,141 +2482,147 @@ function initFirebase(){
     fbAuth.onAuthStateChanged(user=>{
       fbUser=user;
       updateSyncStatus();
+      if(user){
+        // Auto sync stats every 5 minutes
+        clearInterval(autoSyncInterval);
+        autoSyncInterval=setInterval(syncStatsNow,300000);
+        // Sync on startup
+        setTimeout(syncStatsNow,2000);
+      } else {
+        clearInterval(autoSyncInterval);
+      }
     });
-    // Handle redirect result (mobile login)
     fbAuth.getRedirectResult().then(result=>{
       if(result&&result.user){
         setSyncLog('✅ Eingeloggt!');
-        // Auto-open sync modal after mobile login
         setTimeout(()=>openSyncModal(),500);
       }
-    }).catch(e=>{
-      if(e.code!=='auth/no-current-user')
-        console.error('Redirect result error:',e);
-    });
-  }catch(e){console.error('Firebase init error:',e);}
+    }).catch(()=>{});
+  }catch(e){console.error('Firebase:',e);}
 }
 
 function updateSyncStatus(){
-  const statusEl=document.getElementById('sync-status');
+  const el=document.getElementById('sync-status');
   if(fbUser){
-    if(statusEl){statusEl.textContent='☁️ Verbunden';statusEl.style.color='#00c853';}
+    if(el){el.textContent='☁️ Sync aktiv';el.style.color='#00c853';}
     document.getElementById('sync-not-logged').style.display='none';
     document.getElementById('sync-logged').style.display='block';
     const av=document.getElementById('sync-avatar');if(av)av.src=fbUser.photoURL||'';
     const em=document.getElementById('sync-email');if(em)em.textContent=fbUser.displayName||fbUser.email;
-  } else {
-    if(statusEl){statusEl.textContent='☁️ Sync';statusEl.style.color='var(--muted)';}
-    document.getElementById('sync-not-logged').style.display='block';
-    document.getElementById('sync-logged').style.display='none';
+  }else{
+    if(el){el.textContent='☁️ Sync';el.style.color='var(--muted)';}
+    const notLogged=document.getElementById('sync-not-logged');
+    const logged=document.getElementById('sync-logged');
+    if(notLogged)notLogged.style.display='block';
+    if(logged)logged.style.display='none';
   }
 }
 
-function openSyncModal(){
-  document.getElementById('syncModal').style.display='flex';
-}
-function closeSyncModal(){
-  document.getElementById('syncModal').style.display='none';
-}
+function openSyncModal(){document.getElementById('syncModal').style.display='flex';}
+function closeSyncModal(){document.getElementById('syncModal').style.display='none';}
 
 async function syncLogin(){
-  if(!fbAuth){setSyncLog('❌ Firebase nicht geladen!');return;}
+  if(!fbAuth)return;
   setSyncLog('<span class="spinner"></span>Verbinde...');
   try{
     const provider=new firebase.auth.GoogleAuthProvider();
-    provider.addScope('email');
-    provider.addScope('profile');
-    // Try popup first, fallback to redirect
     try{
-      const result=await fbAuth.signInWithPopup(provider);
-      if(result.user){setSyncLog('✅ Eingeloggt als '+result.user.displayName);}
-    }catch(popupErr){
-      // Popup blocked or failed - use redirect
-      setSyncLog('<span class="spinner"></span>Weiterleitung zu Google...');
+      await fbAuth.signInWithPopup(provider);
+      setSyncLog('✅ Eingeloggt!');
+    }catch(e){
       await fbAuth.signInWithRedirect(provider);
     }
-  }catch(e){
-    setSyncLog('❌ Fehler: '+e.message+'<br><small>Code: '+e.code+'</small>');
-  }
+  }catch(e){setSyncLog('❌ '+e.message);}
 }
 
 async function syncLogout(){
-  if(!fbAuth)return;
-  await fbAuth.signOut();
+  clearInterval(autoSyncInterval);
+  if(fbAuth)await fbAuth.signOut();
   setSyncLog('Abgemeldet');
 }
 
-async function syncUpload(){
-  if(!fbUser||!fbDb){setSyncLog('❌ Nicht eingeloggt!');return;}
-  setSyncLog('<span class="spinner"></span>Lade hoch...');
+async function syncStatsNow(){
+  if(!fbUser||!fbDb)return;
+  setSyncLog('<span class="spinner"></span>Synchronisiere...');
   try{
     const uid=fbUser.uid;
-    const data={
-      stats:getStats(),
-      profiles:getAllProfiles(),
-      favs_users:JSON.parse(localStorage.getItem('twitch_favs_users')||'[]'),
-      favs_streamers:JSON.parse(localStorage.getItem('twitch_favs_streamers')||'[]'),
-      theme:localStorage.getItem('twitch_theme')||'dark',
-      layout:document.getElementById('layoutSel')?.value||'layout-auto',
-      uploadedAt:new Date().toISOString(),
-      device:navigator.userAgent.includes('Mobile')?'📱 Handy':'💻 PC'
-    };
-    // Firestore has 1MB limit per doc, split stats if needed
-    await fbDb.collection('users').doc(uid).set({
-      meta:{uploadedAt:data.uploadedAt,device:data.device},
-      profiles:data.profiles,
-      favs_users:data.favs_users,
-      favs_streamers:data.favs_streamers,
-      theme:data.theme,
-      layout:data.layout
-    });
-    // Save stats in separate doc (can be large)
-    const statsStr=JSON.stringify(data.stats);
-    if(statsStr.length<900000){
-      await fbDb.collection('users').doc(uid).collection('data').doc('stats').set({stats:data.stats});
-    } else {
-      setSyncLog('⚠️ Statistiken zu groß für Cloud (>900KB). Andere Daten gespeichert.');
-      return;
+    const localStats=getStats();
+    const ref=fbDb.collection('stats').doc(uid);
+
+    // Get cloud stats
+    const doc=await ref.get();
+    let merged=localStats;
+
+    if(doc.exists){
+      const cloudStats=doc.data().stats||{};
+      // Merge: combine both stats (take max values, add counts)
+      merged=mergeStats(localStats, cloudStats);
+      // Save merged back to local
+      saveStats(merged);
+      if(document.querySelector('.tab.active')?.textContent.includes('Statistik'))renderStats();
     }
-    setSyncLog(`✅ Hochgeladen! (${data.device} · ${new Date().toLocaleTimeString('de-DE')})`);
-    const lastEl=document.getElementById('sync-last');
-    if(lastEl)lastEl.textContent=`Zuletzt: ${fmt(data.uploadedAt)} (${data.device})`;
-  }catch(e){setSyncLog('❌ Fehler: '+e.message);}
+
+    // Upload merged stats to cloud
+    const statsStr=JSON.stringify(merged);
+    if(statsStr.length<900000){
+      await ref.set({
+        stats:merged,
+        updatedAt:new Date().toISOString(),
+        device:navigator.userAgent.includes('Mobile')?'📱 Handy':'💻 PC'
+      });
+      const now=new Date().toLocaleTimeString('de-DE');
+      setSyncLog(`✅ Synchronisiert! (${now})`);
+      const lastEl=document.getElementById('sync-last');
+      if(lastEl)lastEl.textContent='Zuletzt: '+now;
+      const statusEl=document.getElementById('sync-status');
+      if(statusEl){statusEl.textContent='☁️ ✅';statusEl.style.color='#00c853';}
+    }else{
+      setSyncLog('⚠️ Statistiken zu groß, nur teilweise synchronisiert');
+    }
+  }catch(e){
+    setSyncLog('❌ Sync-Fehler: '+e.message);
+    const statusEl=document.getElementById('sync-status');
+    if(statusEl){statusEl.textContent='☁️ ⚠️';statusEl.style.color='#FFA500';}
+  }
 }
 
-async function syncDownload(){
-  if(!fbUser||!fbDb){setSyncLog('❌ Nicht eingeloggt!');return;}
-  setSyncLog('<span class="spinner"></span>Lade herunter...');
-  try{
-    const uid=fbUser.uid;
-    const doc=await fbDb.collection('users').doc(uid).get();
-    if(!doc.exists){setSyncLog('❌ Keine Cloud-Daten gefunden. Zuerst hochladen!');return;}
-    const d=doc.data();
-    // Restore profiles
-    if(d.profiles)localStorage.setItem('twitch_profiles',JSON.stringify(d.profiles));
-    // Restore favs
-    if(d.favs_users)localStorage.setItem('twitch_favs_users',JSON.stringify(d.favs_users));
-    if(d.favs_streamers)localStorage.setItem('twitch_favs_streamers',JSON.stringify(d.favs_streamers));
-    // Restore theme
-    if(d.theme)setTheme(d.theme);
-    // Restore layout
-    if(d.layout){document.getElementById('layoutSel').value=d.layout;setLayout(d.layout);}
-    // Load stats
-    const statsDoc=await fbDb.collection('users').doc(uid).collection('data').doc('stats').get();
-    if(statsDoc.exists&&statsDoc.data().stats){
-      saveStats(statsDoc.data().stats);
-    }
-    // Reload UI
-    loadFavs();
-    renderStats();
-    setSyncLog(`✅ Heruntergeladen! (Gespeichert: ${fmt(d.meta?.uploadedAt)} von ${d.meta?.device||'?'})`);
-  }catch(e){setSyncLog('❌ Fehler: '+e.message);}
+function mergeStats(local, cloud){
+  const merged={...local};
+  Object.entries(cloud).forEach(([date,channels])=>{
+    if(!merged[date])merged[date]={};
+    Object.entries(channels).forEach(([name,data])=>{
+      if(!merged[date][name]){
+        merged[date][name]={...data};
+      }else{
+        const m=merged[date][name];
+        m.subs=Math.max(m.subs||0,data.subs||0);
+        m.resubs=Math.max(m.resubs||0,data.resubs||0);
+        m.gifts=Math.max(m.gifts||0,data.gifts||0);
+        m.bits=Math.max(m.bits||0,data.bits||0);
+        m.messages=(m.messages||0)+(data.messages||0);
+        m.follows=Math.max(m.follows||0,data.follows||0);
+        m.live_mins=Math.max(m.live_mins||0,data.live_mins||0);
+        m.watch_mins=(m.watch_mins||0)+(data.watch_mins||0);
+        if((data.viewers_peak||0)>m.viewers_peak)m.viewers_peak=data.viewers_peak;
+        // Merge games
+        if(data.games)Object.entries(data.games).forEach(([g,c])=>{m.games=m.games||{};m.games[g]=Math.max(m.games[g]||0,c);});
+        // Merge top supporters
+        if(data.top_subbers)Object.entries(data.top_subbers).forEach(([u,c])=>{m.top_subbers=m.top_subbers||{};m.top_subbers[u]=Math.max(m.top_subbers[u]||0,c);});
+        if(data.top_gifters)Object.entries(data.top_gifters).forEach(([u,c])=>{m.top_gifters=m.top_gifters||{};m.top_gifters[u]=Math.max(m.top_gifters[u]||0,c);});
+        if(data.top_bits)Object.entries(data.top_bits).forEach(([u,c])=>{m.top_bits=m.top_bits||{};m.top_bits[u]=Math.max(m.top_bits[u]||0,c);});
+      }
+    });
+  });
+  return merged;
 }
 
 function setSyncLog(msg){
   const el=document.getElementById('sync-log');
   if(el)el.innerHTML=msg;
 }
+
+// Also sync after each new event recorded
+const _origRecordEvent=recordEvent;
 
 // ── STATS EXPORT/IMPORT ──
 function exportStats(format){
