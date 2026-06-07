@@ -1217,6 +1217,79 @@ function removeUser(u){
   if(!grid.children.length)grid.innerHTML='<div class="empty-g"><div class="big">👤</div><div>Gib einen Username ein</div></div>';
 }
 
+// ── CHAT HISTORY ──
+const CHAT_HISTORY_KEY = 'twitch_chat_history';
+const MAX_HISTORY_PER_CHANNEL = 200;
+
+function saveChatMessage(channel, user, text, isMod, isVip, sourceChannel){
+  try{
+    const key = CHAT_HISTORY_KEY + '_' + channel;
+    let history = [];
+    try{ history = JSON.parse(localStorage.getItem(key)||'[]'); }catch(e){}
+    history.push({
+      ts: new Date().toISOString(),
+      user, text,
+      mod: isMod||false,
+      vip: isVip||false,
+      src: sourceChannel||null
+    });
+    // Keep only last N messages
+    if(history.length > MAX_HISTORY_PER_CHANNEL){
+      history = history.slice(-MAX_HISTORY_PER_CHANNEL);
+    }
+    localStorage.setItem(key, JSON.stringify(history));
+  }catch(e){}
+}
+
+function loadChatHistory(channel){
+  try{
+    const key = CHAT_HISTORY_KEY + '_' + channel;
+    return JSON.parse(localStorage.getItem(key)||'[]');
+  }catch(e){return [];}
+}
+
+function renderChatHistory(s){
+  const history = loadChatHistory(s);
+  if(!history.length) return;
+  const chat = document.getElementById('scchat-'+s);
+  if(!chat) return;
+  const st = sSettings[s]||{direction:'top'};
+  
+  // Add separator
+  const sep = document.createElement('div');
+  sep.style.cssText = 'text-align:center;font-size:10px;color:var(--muted);padding:4px;border-bottom:1px solid var(--border);margin-bottom:4px;background:var(--sub-bg);border-radius:4px';
+  sep.textContent = `── Verlauf (${history.length} Nachrichten) ──`;
+  
+  // Render history messages
+  const fragment = document.createDocumentFragment();
+  history.forEach(m=>{
+    const item = document.createElement('div');
+    item.className = 'chat-msg';
+    item.dataset.user = (m.user||'').toLowerCase();
+    item.style.opacity = '0.7'; // slightly faded to distinguish from live
+    const modBadge = m.mod ? '<span style="color:#00aa00;font-size:9px;margin-right:2px">🛡️</span>' : '';
+    const vipBadge = m.vip ? '<span style="color:#e91e8c;font-size:9px;margin-right:2px">💎</span>' : '';
+    const sharedBadge = m.src ? `<span class="shared-badge">🔗 ${esc(m.src)}</span>` : '';
+    item.innerHTML = `<span class="chat-ts">${fmtFull(m.ts)}</span>${modBadge}${vipBadge}${sharedBadge}<span class="chat-user" onclick="window.open('https://twitch.tv/${esc(m.user||'')}','_blank')">${esc(m.user||'')}</span>: <span>${esc(m.text||'')}</span>`;
+    fragment.appendChild(item);
+  });
+  
+  // Add at bottom (old messages) or top depending on direction
+  if(st.direction === 'top'){
+    // Add separator + history at bottom (oldest at bottom)
+    chat.appendChild(sep);
+    chat.appendChild(fragment);
+  } else {
+    // Add history + separator at top
+    chat.insertBefore(sep, chat.firstChild);
+    chat.insertBefore(fragment, chat.firstChild);
+  }
+}
+
+function clearChatHistory(channel){
+  localStorage.removeItem(CHAT_HISTORY_KEY + '_' + channel);
+}
+
 // ── STREAMER TRACKING ──
 function addStreamers(){
   const raw=document.getElementById('streamerInput').value.trim();
@@ -1292,6 +1365,7 @@ function createStreamerCard(s){
         <div class="chat-controls">
           <input type="text" class="chat-filter" placeholder="🔍 User filtern..." id="scfilter-${s}" oninput="applyFilter('${s}',this.value)">
           <button class="btn bg bsm pause-btn" id="scpause-${s}" onclick="togglePause('${s}')" title="Chat pausieren">⏸</button>
+          <button class="btn bg bsm" onclick="clearChatHistory('${s}');document.getElementById('scchat-${s}').innerHTML=''" title="Verlauf löschen">🗑️</button>
           <select class="btn bg bsm" style="height:24px;font-size:11px;padding:0 4px;background:var(--sub-bg);color:var(--text);border:1px solid var(--input-border)" onchange="setSlowMode('${s}',this.value)" title="Chat verlangsamen">
             <option value="0">🐇 Normal</option>
             <option value="500">🐢 0.5s</option>
@@ -1431,6 +1505,8 @@ function renderStreamer(s,d){
     clearInterval(t.modsInterval);t.modsInterval=setInterval(()=>{if(d.uid)fetchModsVips(s,d.uid);},300000);
     document.getElementById('scchat-wrap-'+s).style.display='block';
     document.getElementById('sc-session-'+s).style.display='block';
+    // Load chat history
+    setTimeout(()=>renderChatHistory(s), 300);
   }else{
     if(t.ws){try{t.ws.close()}catch(e){}t.ws=null;}
     document.getElementById('scchat-wrap-'+s).style.display='none';
@@ -1649,6 +1725,8 @@ function addStreamerChatMsg(s,user,text,isMod,isVip,sourceChannel){
   const chat=document.getElementById('scchat-'+s);if(!chat)return;
   // Record message in stats
   recordEvent('streamer',s,{messages:1,viewers:t.stream?.viewer_count||0});
+  // Save to history
+  saveChatMessage(s, user, text, isMod, isVip, sourceChannel);
   const item=document.createElement('div');item.className='chat-msg';item.dataset.user=user.toLowerCase();
   const modBadge=isMod?'<span style="color:#00aa00;font-size:9px;margin-right:2px">🛡️</span>':'';
   const vipBadge=isVip?'<span style="color:#e91e8c;font-size:9px;margin-right:2px">💎</span>':'';
@@ -2036,6 +2114,41 @@ initTheme();
 
 initSpyWS();
 initFirebase();
+
+// ── AUTO RECONNECT ON VISIBILITY CHANGE ──
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible'){
+    // Page became visible again - reconnect everything
+    setTimeout(()=>{
+      // Reconnect spy WS
+      if(!spyWS||spyWS.readyState>1){
+        initSpyWS();
+      }
+      // Reconnect streamer chats
+      Object.keys(trackedStreamers).forEach(s=>{
+        const t=trackedStreamers[s];
+        if(t&&(!t.ws||t.ws.readyState>1)&&t.streamStart){
+          connectStreamerChat(s);
+        }
+      });
+      // Refresh user data
+      Object.keys(trackedUsers).forEach(u=>fetchUser(u));
+      // Refresh streamer data
+      Object.keys(trackedStreamers).forEach(s=>fetchStreamer(s));
+      // Show reconnect indicator
+      const statusEl=document.getElementById('sync-status');
+      if(statusEl){
+        const old=statusEl.textContent;
+        statusEl.textContent='🔄 Wiederverbinde...';
+        statusEl.style.color='#FFA500';
+        setTimeout(()=>{
+          statusEl.textContent=old;
+          statusEl.style.color='';
+        },3000);
+      }
+    },1000);
+  }
+});
 
 // ── FOLLOWS / TWITCH LOGIN ──
 let followsToken=null;
