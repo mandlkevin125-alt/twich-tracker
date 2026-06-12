@@ -212,6 +212,7 @@ select:focus{border-color:#9146FF}
         <button class="btn bg bsm" id="slot2-btn" onclick="quickSaveLoad(2,event.shiftKey)" title="Klick=Laden | Shift+Klick=Speichern" style="min-width:80px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📌 Slot 2</button>
         <div style="font-size:11px;color:#00c853;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3px 10px">✅ Bereit</div>
         <div id="sync-status" style="font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer" onclick="openSyncModal()" title="Cloud Sync">☁️ Sync</div>
+        <button class="btn bg bsm" id="notif-btn" onclick="requestNotifPermission()" title="Benachrichtigungen für Favoriten aktivieren">🔕 Benachrichtigungen aus</button>
       </div>
     </div>
   </div>
@@ -303,28 +304,30 @@ select:focus{border-color:#9146FF}
         <span style="cursor:pointer;color:var(--muted2)" onclick="closeSyncModal()">✕</span>
       </h2>
       <div id="sync-not-logged" style="display:block">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:.8rem">Mit Google einloggen um die <b>Statistiken</b> zwischen PC und Handy automatisch zu synchronisieren.</p>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:6px">
-          📊 Subs, Bits, Follower, Zeiten werden zusammengezählt – egal ob du auf PC oder Handy schaust!
+        <p style="font-size:13px;color:var(--muted);margin-bottom:.8rem">Gib einen <b>persönlichen Code</b> ein – denselben Code auf PC und Handy verwenden.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:.8rem;padding:8px;background:var(--sub-bg);border-radius:6px">
+          📊 Statistiken werden automatisch zwischen allen Geräten mit diesem Code synchronisiert!
         </p>
-        <button class="btn bp" onclick="syncLogin()" style="width:100%">🔵 Mit Google einloggen</button>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Dein Sync-Code (min. 6 Zeichen):</div>
+        <div style="display:flex;gap:8px;margin-bottom:.8rem">
+          <input type="password" id="syncCodeInput" placeholder="z.B. Kevin2024Twitch" style="flex:1;background:var(--sub-bg);border:1px solid var(--input-border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')syncWithCode()">
+          <button class="btn bp" onclick="syncWithCode()">✅ Verbinden</button>
+        </div>
+        <div id="sync-log" style="font-size:11px;color:var(--muted);min-height:16px"></div>
       </div>
       <div id="sync-logged" style="display:none">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:8px;background:var(--sub-bg);border-radius:8px">
-          <img id="sync-avatar" src="" style="width:32px;height:32px;border-radius:50%">
+        <div style="padding:8px;background:var(--sub-bg);border-radius:8px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
           <div>
-            <div id="sync-email" style="font-size:13px;font-weight:600;color:var(--text)"></div>
+            <div style="font-size:13px;font-weight:600;color:#00c853">✅ Sync aktiv</div>
             <div id="sync-last" style="font-size:10px;color:var(--muted)"></div>
           </div>
+          <button class="btn bg bsm" onclick="syncLogout()">Trennen</button>
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:.8rem">
-          🔄 Statistiken werden <b>automatisch</b> alle 5 Minuten synchronisiert
+          🔄 Automatisch alle 5 Minuten synchronisiert
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.8rem">
-          <button class="btn bp" onclick="syncStatsNow()">🔄 Jetzt syncen</button>
-          <button class="btn br bsm" onclick="syncLogout()" style="height:36px">Abmelden</button>
-        </div>
-        <div id="sync-log" style="font-size:11px;color:var(--muted);min-height:20px;padding:6px;background:var(--sub-bg);border-radius:6px"></div>
+        <button class="btn bp" onclick="syncStatsNow()" style="width:100%;margin-bottom:.5rem">🔄 Jetzt syncen</button>
+        <div id="sync-log2" style="font-size:11px;color:var(--muted);min-height:16px;margin-top:4px"></div>
       </div>
     </div>
   </div>
@@ -396,8 +399,8 @@ function getStats(){
 function saveStats(s){localStorage.setItem('twitch_stats',JSON.stringify(s));}
 
 function recordEvent(type, name, data){
-  // Trigger sync after 30s if logged in
-  if(fbUser){
+  // Trigger sync after 30s if connected
+  if(syncCode){
     clearTimeout(recordEvent._syncTimer);
     recordEvent._syncTimer=setTimeout(syncStatsNow,30000);
   }
@@ -1120,6 +1123,7 @@ function renderStreamerInfoBox(u, info){
 }
 
 function addUserMsg(u,channel,text){
+  checkFavChatNotif(u, channel, text);
   const t=trackedUsers[u];if(t){
     t.lastMsgTime=new Date();
     recordEvent('user',u,{messages:1});
@@ -1296,6 +1300,73 @@ function clearChatHistory(channel){
   localStorage.removeItem(CHAT_HISTORY_KEY + '_' + channel);
 }
 
+// ── BROWSER NOTIFICATIONS ──
+let notifPermission = (typeof Notification!=='undefined') ? Notification.permission : 'denied';
+
+function getFavList(type){
+  try{return JSON.parse(localStorage.getItem('twitch_favs_'+type)||'[]');}catch(e){return [];}
+}
+
+async function requestNotifPermission(){
+  if(typeof Notification==='undefined'){
+    alert('Benachrichtigungen werden von diesem Browser nicht unterstützt.');
+    return;
+  }
+  if(Notification.permission==='granted'){notifPermission='granted';updateNotifButton();return;}
+  const perm=await Notification.requestPermission();
+  notifPermission=perm;
+  updateNotifButton();
+  if(perm==='granted'){
+    showNotif('🔔 Benachrichtigungen aktiv!','Du wirst informiert wenn Favoriten live gehen oder schreiben.');
+  }
+}
+
+function updateNotifButton(){
+  const btn=document.getElementById('notif-btn');
+  if(!btn)return;
+  if(notifPermission==='granted'){
+    btn.innerHTML='🔔 Benachrichtigungen an';
+    btn.classList.add('btog');btn.classList.add('on');
+  }else{
+    btn.innerHTML='🔕 Benachrichtigungen aus';
+    btn.classList.remove('on');
+  }
+}
+
+function showNotif(title,body,tag){
+  if(notifPermission!=='granted')return;
+  try{
+    const n=new Notification(title,{body,icon:'https://static-cdn.jtvnw.net/jtv_user_pictures/twitch-profile_image-70x70.png',tag:tag||undefined});
+    n.onclick=()=>{window.focus();n.close();};
+  }catch(e){}
+}
+
+// Track which favorites are currently live to avoid duplicate notifications
+const notifiedLive = new Set();
+const notifiedChat = new Set(); // throttle: user+channel combos already notified this session
+
+function checkFavLiveNotif(s, isLive, streamTitle){
+  const favStreamers=getFavList('streamers');
+  if(!favStreamers.includes(s))return;
+  if(isLive && !notifiedLive.has(s)){
+    notifiedLive.add(s);
+    showNotif('🔴 '+s+' ist jetzt LIVE!', streamTitle||'Stream gestartet', 'live-'+s);
+  } else if(!isLive && notifiedLive.has(s)){
+    notifiedLive.delete(s);
+  }
+}
+
+function checkFavChatNotif(user, channel, text){
+  const favUsers=getFavList('users');
+  if(!favUsers.includes(user))return;
+  const key=user+'@'+channel;
+  if(notifiedChat.has(key))return;
+  notifiedChat.add(key);
+  // Allow re-notify after 10 minutes
+  setTimeout(()=>notifiedChat.delete(key), 600000);
+  showNotif('💬 '+user+' schreibt bei '+channel, text.slice(0,100), 'chat-'+user);
+}
+
 // ── STREAMER TRACKING ──
 function addStreamers(){
   const raw=document.getElementById('streamerInput').value.trim();
@@ -1325,6 +1396,7 @@ function createStreamerCard(s){
         <div id="scbadge-${s}"></div>
       </div>
       <div class="card-actions">
+        <button class="btn bp bsm embed-toggle-btn" id="scplay-${s}" onclick="togglePlayer('${s}')" title="Live-Stream ansehen">▶️ Stream</button>
         <button class="btn bg bsm btog" id="sclock-${s}" onclick="toggleLock('sc-${s}','sclock-${s}')" title="Größe sperren">🔓</button>
         <button class="btn bg bsm" onclick="fetchStreamer('${s}')">↺</button>
         <button class="btn br bsm" onclick="removeStreamer('${s}')">✕</button>
@@ -1333,6 +1405,15 @@ function createStreamerCard(s){
     <div class="resize-handle" id="scresize-${s}"></div>
     </div>
     <div id="scinfo-${s}"><span class="spinner"></span></div>
+    <div class="player-wrap" id="scplayer-wrap-${s}">
+      <iframe class="player-frame" id="scplayer-video-${s}" allowfullscreen="true" scrolling="no"></iframe>
+      <div class="player-controls">
+        <button class="btn bg bsm" id="scmute-${s}" onclick="togglePlayerMute('${s}')">🔇 Stumm</button>
+        <button class="btn bg bsm" onclick="togglePlayerChat('${s}')" id="scplayerchat-btn-${s}">💬 Chat ein/aus</button>
+        <span style="font-size:10px;color:var(--muted)">📺 Live-Vorschau</span>
+      </div>
+      <iframe class="player-frame" id="scplayer-chat-${s}" style="aspect-ratio:auto;height:300px;display:none" scrolling="yes"></iframe>
+    </div>
     <div id="sc-session-${s}" style="display:none">
       <div class="session-bar">
         <div class="sbar-item"><div class="sbar-l">🎉 Subs</div><div class="sbar-v" id="sc-subs-v-${s}" style="color:#f0a500">0</div></div>
@@ -1392,6 +1473,72 @@ function createStreamerCard(s){
   grid.appendChild(card);
   initDrag(card);
   initResize(card);
+}
+
+// ── EMBEDDED LIVE PLAYER ──
+function getEmbedParent(){
+  // Determine the correct parent domain for Twitch embed
+  const host = window.location.hostname;
+  return host || 'localhost';
+}
+
+const playerOpen = {};
+const playerMuted = {};
+
+function togglePlayer(s){
+  const wrap = document.getElementById('scplayer-wrap-'+s);
+  const video = document.getElementById('scplayer-video-'+s);
+  const btn = document.getElementById('scplay-'+s);
+  if(!wrap||!video)return;
+  if(playerOpen[s]){
+    // Close
+    playerOpen[s]=false;
+    wrap.classList.remove('show');
+    video.src='';
+    document.getElementById('scplayer-chat-'+s).src='';
+    if(btn)btn.innerHTML='▶️ Stream';
+  }else{
+    // Open
+    playerOpen[s]=true;
+    wrap.classList.add('show');
+    const parent=getEmbedParent();
+    const muted=playerMuted[s]!==false; // default muted true
+    video.src=`https://player.twitch.tv/?channel=${s}&parent=${parent}&muted=${muted}`;
+    if(btn)btn.innerHTML='⏹️ Schließen';
+    updateMuteBtn(s);
+  }
+}
+
+function togglePlayerMute(s){
+  playerMuted[s] = !(playerMuted[s]!==false);
+  const video = document.getElementById('scplayer-video-'+s);
+  if(video&&video.src){
+    const parent=getEmbedParent();
+    video.src=`https://player.twitch.tv/?channel=${s}&parent=${parent}&muted=${playerMuted[s]}`;
+  }
+  updateMuteBtn(s);
+}
+
+function updateMuteBtn(s){
+  const btn=document.getElementById('scmute-'+s);
+  if(!btn)return;
+  const muted=playerMuted[s]!==false;
+  btn.innerHTML = muted ? '🔇 Stumm' : '🔊 Ton an';
+}
+
+function togglePlayerChat(s){
+  const chatFrame = document.getElementById('scplayer-chat-'+s);
+  if(!chatFrame)return;
+  const parent=getEmbedParent();
+  if(chatFrame.style.display==='none'){
+    chatFrame.style.display='block';
+    if(!chatFrame.src){
+      const isDark = !document.body.classList.contains('light');
+      chatFrame.src=`https://www.twitch.tv/embed/${s}/chat?parent=${parent}&darkpopout=${isDark}`;
+    }
+  }else{
+    chatFrame.style.display='none';
+  }
 }
 
 function setChatSize(s,v){const el=document.getElementById('scchat-'+s);if(el)el.style.fontSize=v+'px';const l=document.getElementById('scfs-'+s);if(l)l.textContent=v+'px';}
@@ -1481,6 +1628,7 @@ function renderStreamer(s,d){
   isLive?card.classList.add('live-border'):card.classList.remove('live-border');
   document.getElementById('scdot-'+s).className=isLive?'dot live':'dot off';
   document.getElementById('scbadge-'+s).innerHTML=isLive?'<span class="badge live">🔴 LIVE</span>':'<span class="badge offline">● Offline</span>';
+  checkFavLiveNotif(s, isLive, stream?stream.title:null);
   if(isLive){
     if(!t.streamStart){t.streamStart=stream.started_at;}
     if(!t.watchStartTime){t.watchStartTime=new Date();}
@@ -1516,6 +1664,7 @@ function renderStreamer(s,d){
   }else{
     if(t.ws){try{t.ws.close()}catch(e){}t.ws=null;}
     document.getElementById('scchat-wrap-'+s).style.display='none';
+    if(playerOpen[s])togglePlayer(s);
   }
   document.getElementById('scinfo-'+s).innerHTML=html;
   document.getElementById('scstatus-'+s).textContent='Aktualisiert: '+fmtT(new Date());
@@ -1707,6 +1856,7 @@ function setSlowMode(s,v){
 }
 
 function addStreamerChatMsg(s,user,text,isMod,isVip,sourceChannel){
+  checkFavChatNotif(user, s, text);
   const st=sSettings[s]||{direction:'top',filter:'',paused:false,slowMode:0,queue:[]};
   // Slow mode
   if(st.slowMode>0){
@@ -2461,139 +2611,103 @@ function trackAllLive(){
   live.forEach(f=>trackFollowStreamer(f.broadcaster_login));
 }
 
-// ── FIREBASE SYNC ──
-const firebaseConfig = {
-  apiKey: "AIzaSyBZ5IKUycKrESWv5zJ8T6IoDYYMNedC_Dg",
-  authDomain: "twitch-tracker-6194e.firebaseapp.com",
-  projectId: "twitch-tracker-6194e",
-  storageBucket: "twitch-tracker-6194e.firebasestorage.app",
-  messagingSenderId: "569307864267",
-  appId: "1:569307864267:web:65470b4e6eb9aa3e7c4f4e"
-};
-
-let fbApp=null,fbDb=null,fbAuth=null,fbUser=null;
+// ── SYNC (Code-basiert) ──
+const firebaseConfig={apiKey:"AIzaSyBZ5IKUycKrESWv5zJ8T6IoDYYMNedC_Dg",authDomain:"twitch-tracker-6194e.firebaseapp.com",projectId:"twitch-tracker-6194e"};
+let fbApp=null,fbDb=null,fbUser=null,syncCode=null;
 let autoSyncInterval=null;
 
 function initFirebase(){
   try{
     fbApp=firebase.initializeApp(firebaseConfig);
     fbDb=firebase.firestore();
-    fbAuth=firebase.auth();
-    fbAuth.onAuthStateChanged(user=>{
-      fbUser=user;
-      updateSyncStatus();
-      if(user){
-        // Auto sync stats every 5 minutes
-        clearInterval(autoSyncInterval);
-        autoSyncInterval=setInterval(syncStatsNow,300000);
-        // Sync on startup
-        setTimeout(syncStatsNow,2000);
-      } else {
-        clearInterval(autoSyncInterval);
-      }
-    });
-    fbAuth.getRedirectResult().then(result=>{
-      if(result&&result.user){
-        setSyncLog('✅ Eingeloggt!');
-        setTimeout(()=>openSyncModal(),500);
-      }
-    }).catch(()=>{});
+    // Check saved code
+    const saved=localStorage.getItem('twitch_sync_code');
+    if(saved){syncCode=saved;activateSync();}
   }catch(e){console.error('Firebase:',e);}
-}
-
-function updateSyncStatus(){
-  const el=document.getElementById('sync-status');
-  if(fbUser){
-    if(el){el.textContent='☁️ Sync aktiv';el.style.color='#00c853';}
-    document.getElementById('sync-not-logged').style.display='none';
-    document.getElementById('sync-logged').style.display='block';
-    const av=document.getElementById('sync-avatar');if(av)av.src=fbUser.photoURL||'';
-    const em=document.getElementById('sync-email');if(em)em.textContent=fbUser.displayName||fbUser.email;
-  }else{
-    if(el){el.textContent='☁️ Sync';el.style.color='var(--muted)';}
-    const notLogged=document.getElementById('sync-not-logged');
-    const logged=document.getElementById('sync-logged');
-    if(notLogged)notLogged.style.display='block';
-    if(logged)logged.style.display='none';
-  }
 }
 
 function openSyncModal(){document.getElementById('syncModal').style.display='flex';}
 function closeSyncModal(){document.getElementById('syncModal').style.display='none';}
 
-async function syncLogin(){
-  if(!fbAuth)return;
+function setSyncLog(msg,id){
+  const el=document.getElementById(id||'sync-log');
+  if(el)el.innerHTML=msg;
+}
+
+async function syncWithCode(){
+  const input=document.getElementById('syncCodeInput');
+  const code=(input?.value||'').trim();
+  if(code.length<6){setSyncLog('❌ Code muss mindestens 6 Zeichen haben!');return;}
   setSyncLog('<span class="spinner"></span>Verbinde...');
-  try{
-    const provider=new firebase.auth.GoogleAuthProvider();
-    try{
-      await fbAuth.signInWithPopup(provider);
-      setSyncLog('✅ Eingeloggt!');
-    }catch(e){
-      await fbAuth.signInWithRedirect(provider);
-    }
-  }catch(e){setSyncLog('❌ '+e.message);}
+  syncCode=code;
+  localStorage.setItem('twitch_sync_code',code);
+  await activateSync();
 }
 
-async function syncLogout(){
+async function activateSync(){
+  document.getElementById('sync-not-logged').style.display='none';
+  document.getElementById('sync-logged').style.display='block';
+  updateSyncStatus();
   clearInterval(autoSyncInterval);
-  if(fbAuth)await fbAuth.signOut();
-  setSyncLog('Abgemeldet');
+  autoSyncInterval=setInterval(syncStatsNow,300000);
+  await syncStatsNow();
 }
 
-async function syncStatsNow(){
-  if(!fbUser||!fbDb)return;
-  setSyncLog('<span class="spinner"></span>Synchronisiere...');
-  try{
-    const uid=fbUser.uid;
-    const localStats=getStats();
-    const ref=fbDb.collection('stats').doc(uid);
+function syncLogout(){
+  syncCode=null;
+  localStorage.removeItem('twitch_sync_code');
+  clearInterval(autoSyncInterval);
+  document.getElementById('sync-not-logged').style.display='block';
+  document.getElementById('sync-logged').style.display='none';
+  updateSyncStatus();
+}
 
-    // Get cloud stats
-    const doc=await ref.get();
-    let merged=localStats;
-
-    if(doc.exists){
-      const cloudStats=doc.data().stats||{};
-      // Merge: combine both stats (take max values, add counts)
-      merged=mergeStats(localStats, cloudStats);
-      // Save merged back to local
-      saveStats(merged);
-      if(document.querySelector('.tab.active')?.textContent.includes('Statistik'))renderStats();
-    }
-
-    // Upload merged stats to cloud
-    const statsStr=JSON.stringify(merged);
-    if(statsStr.length<900000){
-      await ref.set({
-        stats:merged,
-        updatedAt:new Date().toISOString(),
-        device:navigator.userAgent.includes('Mobile')?'📱 Handy':'💻 PC'
-      });
-      const now=new Date().toLocaleTimeString('de-DE');
-      setSyncLog(`✅ Synchronisiert! (${now})`);
-      const lastEl=document.getElementById('sync-last');
-      if(lastEl)lastEl.textContent='Zuletzt: '+now;
-      const statusEl=document.getElementById('sync-status');
-      if(statusEl){statusEl.textContent='☁️ ✅';statusEl.style.color='#00c853';}
-    }else{
-      setSyncLog('⚠️ Statistiken zu groß, nur teilweise synchronisiert');
-    }
-  }catch(e){
-    setSyncLog('❌ Sync-Fehler: '+e.message);
-    const statusEl=document.getElementById('sync-status');
-    if(statusEl){statusEl.textContent='☁️ ⚠️';statusEl.style.color='#FFA500';}
+function updateSyncStatus(){
+  const el=document.getElementById('sync-status');
+  if(syncCode){
+    if(el){el.textContent='☁️ Sync aktiv';el.style.color='#00c853';}
+  }else{
+    if(el){el.textContent='☁️ Sync';el.style.color='var(--muted)';}
   }
 }
 
-function mergeStats(local, cloud){
+async function syncStatsNow(){
+  if(!syncCode||!fbDb)return;
+  setSyncLog('<span class="spinner"></span>Synchronisiere...','sync-log2');
+  try{
+    // Use hashed code as doc ID (simple hash)
+    const docId='sync_'+btoa(syncCode).replace(/[^a-zA-Z0-9]/g,'').substring(0,32);
+    const ref=fbDb.collection('twitch_sync').doc(docId);
+    const localStats=getStats();
+    const doc=await ref.get();
+    let merged=localStats;
+    if(doc.exists){
+      const cloudStats=doc.data().stats||{};
+      merged=mergeStats(localStats,cloudStats);
+      saveStats(merged);
+      if(document.querySelector('.tab.active')?.textContent.includes('Statistik'))renderStats();
+    }
+    const statsStr=JSON.stringify(merged);
+    if(statsStr.length<900000){
+      await ref.set({stats:merged,updatedAt:new Date().toISOString()},{merge:true});
+      const now=new Date().toLocaleTimeString('de-DE');
+      setSyncLog('✅ Synchronisiert! ('+now+')','sync-log2');
+      const lastEl=document.getElementById('sync-last');
+      if(lastEl)lastEl.textContent='Zuletzt: '+now;
+      if(document.getElementById('sync-status'))document.getElementById('sync-status').textContent='☁️ ✅';
+    }
+  }catch(e){
+    setSyncLog('❌ Fehler: '+e.message,'sync-log2');
+  }
+}
+
+function mergeStats(local,cloud){
   const merged={...local};
   Object.entries(cloud).forEach(([date,channels])=>{
     if(!merged[date])merged[date]={};
     Object.entries(channels).forEach(([name,data])=>{
-      if(!merged[date][name]){
-        merged[date][name]={...data};
-      }else{
+      if(!merged[date][name]){merged[date][name]={...data};}
+      else{
         const m=merged[date][name];
         m.subs=Math.max(m.subs||0,data.subs||0);
         m.resubs=Math.max(m.resubs||0,data.resubs||0);
@@ -2603,10 +2717,8 @@ function mergeStats(local, cloud){
         m.follows=Math.max(m.follows||0,data.follows||0);
         m.live_mins=Math.max(m.live_mins||0,data.live_mins||0);
         m.watch_mins=(m.watch_mins||0)+(data.watch_mins||0);
-        if((data.viewers_peak||0)>m.viewers_peak)m.viewers_peak=data.viewers_peak;
-        // Merge games
+        if((data.viewers_peak||0)>(m.viewers_peak||0))m.viewers_peak=data.viewers_peak;
         if(data.games)Object.entries(data.games).forEach(([g,c])=>{m.games=m.games||{};m.games[g]=Math.max(m.games[g]||0,c);});
-        // Merge top supporters
         if(data.top_subbers)Object.entries(data.top_subbers).forEach(([u,c])=>{m.top_subbers=m.top_subbers||{};m.top_subbers[u]=Math.max(m.top_subbers[u]||0,c);});
         if(data.top_gifters)Object.entries(data.top_gifters).forEach(([u,c])=>{m.top_gifters=m.top_gifters||{};m.top_gifters[u]=Math.max(m.top_gifters[u]||0,c);});
         if(data.top_bits)Object.entries(data.top_bits).forEach(([u,c])=>{m.top_bits=m.top_bits||{};m.top_bits[u]=Math.max(m.top_bits[u]||0,c);});
@@ -2615,14 +2727,6 @@ function mergeStats(local, cloud){
   });
   return merged;
 }
-
-function setSyncLog(msg){
-  const el=document.getElementById('sync-log');
-  if(el)el.innerHTML=msg;
-}
-
-// Also sync after each new event recorded
-const _origRecordEvent=recordEvent;
 
 // ── STATS EXPORT/IMPORT ──
 function exportStats(format){
@@ -2710,6 +2814,7 @@ function handleImport(input){
 }
 
 loadFavs();
+updateNotifButton();
 initQuickSlots();
 restoreCardSizes();
 
